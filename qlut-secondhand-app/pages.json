@@ -21,6 +21,27 @@
 				"navigationBarBackgroundColor": "#FFFFFF",
 				"navigationStyle": "custom"
 			}
+		},
+		{
+			"path": "pages/item/post",
+			"style": {
+				"navigationBarTitleText": "发布闲置",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/message/message",
+			"style": {
+				"navigationBarTitleText": "消息",
+				"navigationBarBackgroundColor": "#FFFFFF"
+			}
+		},
+		{
+			"path": "pages/profile/profile",
+			"style": {
+				"navigationBarTitleText": "我的",
+				"navigationBarBackgroundColor": "#FFFFFF"
+			}
 		}
 	],
 	"globalStyle": {
@@ -28,6 +49,30 @@
 		"navigationBarTitleText": "齐鲁工大二手平台",
 		"navigationBarBackgroundColor": "#F8F8F8",
 		"backgroundColor": "#F8F8F8"
+	},
+	"tabBar": {
+		"color": "#999",
+		"selectedColor": "#07c160",
+		"borderStyle": "white",
+		"backgroundColor": "#fff",
+		"list": [
+			{
+				"pagePath": "pages/index/index",
+				"text": "首页"
+			},
+			{
+				"pagePath": "pages/item/post",
+				"text": "发布"
+			},
+			{
+				"pagePath": "pages/message/message",
+				"text": "消息"
+			},
+			{
+				"pagePath": "pages/profile/profile",
+				"text": "我的"
+			}
+		]
 	},
 	"uniIdRouter": {}
 }

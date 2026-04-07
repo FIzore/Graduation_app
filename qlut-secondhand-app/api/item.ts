@@ -4,14 +4,14 @@ import { request, BASE_URL } from '../utils/request';
 export type ItemStatus = 'OnSale' | 'Pending' | 'Completed';
 
 export interface Item {
-  ID: number;
-  PublisherID: number;
-  Title: string;
-  Content: string;
-  Price: number;
-  Images: string[];
-  Status: ItemStatus;
-  CreatedAt?: string;
+  id: number;
+  publisher_id: number;
+  title: string;
+  content: string;
+  price: number;
+  images: string[];
+  status: ItemStatus;
+  created_at?: string;
 }
 
 /**
@@ -26,6 +26,13 @@ export const getItems = (params: { page: number; size: number; status?: ItemStat
  */
 export const getItemDetail = (id: number) => {
   return request<Item>(`/items/${id}`, 'GET');
+};
+
+/**
+ * 发布闲置物品 (Create New Item)
+ */
+export const createItem = (data: { title: string; content: string; price: number; images: string[] }) => {
+  return request('/items', 'POST', data);
 };
 
 /**
