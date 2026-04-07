@@ -3,12 +3,11 @@
     <!-- 自定义导航栏 -->
     <view class="custom-nav">
       <view class="nav-back" @click="handleCancel">
-        <text style="font-size: 28rpx; color: #666;">取消</text>
+        <text class="nav-cancel">取消</text>
       </view>
       <text class="nav-title">发布闲置</text>
-      <view class="publish-btn-wrapper">
-        <button class="publish-btn" :loading="isPublishing" @click="onPublish">发布</button>
-      </view>
+      <!-- 右侧占位，确保标题绝对居中 -->
+      <view class="nav-placeholder"></view>
     </view>
 
     <scroll-view scroll-y class="post-content">
@@ -72,6 +71,12 @@
       
       <view class="safe-bottom"></view>
     </scroll-view>
+
+    <!-- FAB 悬浮发布按鈕 -->
+    <view class="fab-publish-btn" @click="handlePublish">
+      <text v-if="!isPublishing">发布</text>
+      <text v-else>发布中...</text>
+    </view>
   </view>
 </template>
 
@@ -127,7 +132,7 @@ const previewImage = (index: number) => {
   });
 };
 
-const onPublish = async () => {
+const handlePublish = async () => {
   // 防守逻辑：检查图片
   if (formData.images.length === 0) {
     return uni.showToast({ title: '请至少上传一张图片', icon: 'none' });
@@ -181,7 +186,12 @@ const onPublish = async () => {
   padding-right: 30rpx;
   
   .nav-back {
-    width: 60rpx;
+    width: 100rpx; // 和右侧占位宽度对称
+    
+    .nav-cancel {
+      font-size: 28rpx;
+      color: #666;
+    }
   }
   
   .nav-title {
@@ -192,31 +202,8 @@ const onPublish = async () => {
     color: #333;
   }
   
-  .publish-btn-wrapper {
-    width: 120rpx;
-    display: flex;
-    justify-content: flex-end;
-    
-    .publish-btn {
-      margin: 0 !important;
-      padding: 0 30rpx;
-      height: 60rpx;
-      line-height: 60rpx;
-      background-color: #07c160;
-      color: #fff;
-      font-size: 26rpx;
-      border-radius: 30rpx;
-      border: none;
-      
-      &:after {
-        border: none;
-      }
-      
-      &[loading]:before {
-        width: 24rpx;
-        height: 24rpx;
-      }
-    }
+  .nav-placeholder {
+    width: 100rpx; // 与左侧宽度对称，确保标题绝对居中
   }
 }
 
@@ -335,6 +322,31 @@ const onPublish = async () => {
 }
 
 .safe-bottom {
-  height: 100rpx;
+  height: 200rpx; // 提高底部空白，防止 FAB 递盖内容
+}
+
+// FAB 悬浮发布按鈕
+.fab-publish-btn {
+  position: fixed;
+  right: 40rpx;
+  bottom: calc(env(safe-area-inset-bottom) + 60rpx);
+  width: 160rpx;
+  height: 80rpx;
+  background-color: #07c160;
+  color: #ffffff;
+  font-size: 32rpx;
+  font-weight: bold;
+  border-radius: 40rpx;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 8rpx 16rpx rgba(7, 193, 96, 0.3);
+  z-index: 999;
+  
+  // 点击反馈
+  &:active {
+    opacity: 0.85;
+    transform: scale(0.96);
+  }
 }
 </style>

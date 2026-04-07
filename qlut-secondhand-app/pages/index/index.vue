@@ -32,10 +32,9 @@
           </view>
         </view>
       </view>
-      
-      <!-- 底部 Tabbar -->
-      <custom-tabbar active="index" />
     </scroll-view>
+    <!-- TabBar 在 scroll-view 外部，确保 fixed 定位生效 -->
+    <custom-tabbar active="index" />
   </view>
 </template>
 
