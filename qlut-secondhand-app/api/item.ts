@@ -19,6 +19,20 @@ export const getItems = (params: { page: number; size: number; status?: number }
 };
 
 /**
+ * 获取单个物品详情
+ */
+export const getItemDetail = (id: number) => {
+  return request<Item>(`/items/${id}`, 'GET');
+};
+
+/**
+ * 发起预约 (Handover Appointment)
+ */
+export const createAppointment = (itemId: number) => {
+  return request('/appointments', 'POST', { item_id: itemId });
+};
+
+/**
  * 单图上传
  * 采用原生 uni.uploadFile 并封装 Promise
  */
