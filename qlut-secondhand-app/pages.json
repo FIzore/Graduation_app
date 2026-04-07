@@ -13,6 +13,14 @@
 				"navigationBarTitleText": "物品详情",
 				"navigationBarBackgroundColor": "#FFFFFF"
 			}
+		},
+		{
+			"path": "pages/auth/login",
+			"style": {
+				"navigationBarTitleText": "登录",
+				"navigationBarBackgroundColor": "#FFFFFF",
+				"navigationStyle": "custom"
+			}
 		}
 	],
 	"globalStyle": {

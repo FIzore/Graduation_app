@@ -44,7 +44,7 @@
     <view class="bottom-bar">
       <view class="action-btn-group">
         <button 
-          v-if="item.Status === 1" 
+          v-if="item.Status === 'OnSale'" 
           class="reserve-btn" 
           @click="onReserve"
           :loading="reserving"
@@ -52,7 +52,7 @@
           立即发起预约
         </button>
         <button 
-          v-else-if="item.Status === 2" 
+          v-else-if="item.Status === 'Pending'" 
           class="pending-btn" 
           disabled
         >
@@ -138,7 +138,7 @@ const handleReserve = async () => {
     await createAppointment(item.value.ID);
     uni.showToast({ title: '预约成功', icon: 'success' });
     // 成功后 local 更新状态避免重新请求
-    item.value.Status = 2;
+    item.value.Status = 'Pending';
   } catch (error: any) {
     // 精度捕获：如果是 429 锁定状态 (通常由后端返回业务 code 或 429 响应头)
     // 根据 PRD, 这里需要给出明确提示
@@ -159,8 +159,8 @@ const previewImage = (current: number) => {
   });
 };
 
-const getStatusText = (status: number) => {
-  const map: any = { 1: '待售', 2: '交接中', 3: '已交接' };
+const getStatusText = (status: string) => {
+  const map: any = { 'OnSale': '待售', 'Pending': '交接中', 'Completed': '已交接' };
   return map[status] || '未知状态';
 };
 
@@ -218,9 +218,9 @@ const formatTime = (time: any) => {
   border-radius: 8rpx;
 }
 
-.status-1 { background-color: #e6f7ff; color: #1890ff; }
-.status-2 { background-color: #fff7e6; color: #fa8c16; }
-.status-3 { background-color: #f5f5f5; color: #8c8c8c; }
+.status-OnSale { background-color: #e6f7ff; color: #1890ff; }
+.status-Pending { background-color: #fff7e6; color: #fa8c16; }
+.status-Completed { background-color: #f5f5f5; color: #8c8c8c; }
 
 .item-title {
   font-size: 36rpx;

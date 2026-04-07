@@ -21,14 +21,14 @@
           :key="item.ID" 
           @click="goToDetail(item.ID)"
         >
-          <!-- 图片展示 -->
-          <image :src="item.Images[0] || '/static/default.png'" mode="aspectFill" class="item-img" />
+          <!-- 图片展示: 兼容相对路径与外部链接 -->
+          <image :src="getImageUrl(item.Images)" mode="aspectFill" class="item-img" />
           
           <!-- 信息展示 -->
           <view class="item-info">
             <text class="item-title">{{ item.Title }}</text>
             <text class="item-price">￥{{ item.Price }}</text>
-            <text class="item-status" v-if="item.Status === 2">预约交接中</text>
+            <text class="item-status" v-if="item.Status === 'Pending'">预约交接中</text>
           </view>
         </view>
       </view>
@@ -43,7 +43,9 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { getItems, type Item } from '../../api/item';
+import { BASE_URL } from '../../utils/request';
 
+const serverUrl = BASE_URL.replace('/api/v1', '');
 const items = ref<Item[]>([]);
 const page = ref(1);
 const size = ref(10);
@@ -57,8 +59,8 @@ const fetchItems = async (isRefresh = false) => {
   
   loading.value = true;
   try {
-    // 状态 1 代表 OnSale（待售）
-    const res = await getItems({ page: page.value, size: size.value, status: 1 });
+    // 状态 'OnSale' 代表待售
+    const res = await getItems({ page: page.value, size: size.value, status: 'OnSale' });
     
     // 兼容可能不同的返回结构包裹
     const newItems = res.data?.items || res.data || [];
@@ -78,9 +80,9 @@ const fetchItems = async (isRefresh = false) => {
     // [Mock 数据作为回退，方便 UI 演示与验证]
     if (items.value.length === 0) {
       items.value = [
-        { ID: 1, PublisherID: 101, Title: '九成新高数课本，笔记清晰', Content: '保护得很好', Price: 15.0, Images: [''], Status: 1 },
-        { ID: 2, PublisherID: 102, Title: '全新未拆封蓝牙耳机', Content: '未拆封', Price: 80.0, Images: [''], Status: 2 },
-        { ID: 3, PublisherID: 103, Title: '考研政治核心考案', Content: '附赠资料', Price: 30.0, Images: [''], Status: 1 }
+        { ID: 1, PublisherID: 101, Title: '九成新高数课本，笔记清晰', Content: '保护得很好', Price: 15.0, Images: [''], Status: 'OnSale' },
+        { ID: 2, PublisherID: 102, Title: '全新未拆封蓝牙耳机', Content: '未拆封', Price: 80.0, Images: [''], Status: 'Pending' },
+        { ID: 3, PublisherID: 103, Title: '考研政治核心考案', Content: '附赠资料', Price: 30.0, Images: [''], Status: 'OnSale' }
       ];
       noMore.value = true;
     }
@@ -109,6 +111,33 @@ const goToDetail = (id: number) => {
   uni.navigateTo({
     url: `/pages/item/detail?id=${id}`
   });
+};
+
+// 解析图片地址：处理相对路径与 JSON 字符串兼容
+const getImageUrl = (images: any) => {
+  if (!images) return '/static/default.png';
+  
+  let imgList: string[] = [];
+  try {
+    if (Array.isArray(images)) {
+      imgList = images;
+    } else if (typeof images === 'string') {
+      // 尝试解析 JSON 字符串
+      if (images.startsWith('[')) {
+        imgList = JSON.parse(images);
+      } else {
+        imgList = [images];
+      }
+    }
+  } catch (e) {
+    console.error('解析图片路径失败', e);
+  }
+
+  if (imgList.length === 0 || !imgList[0]) return '/static/default.png';
+  
+  const first = imgList[0];
+  // 如果是完整 URL 则直接返回，否则拼接服务器基准路径
+  return first.startsWith('http') ? first : serverUrl + first;
 };
 
 onMounted(() => {

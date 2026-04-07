@@ -1,6 +1,8 @@
 import { request, BASE_URL } from '../utils/request';
 
-// 物品状态码: 1-待售 (OnSale), 2-交接中 (Pending), 3-已完成 (Completed)
+// 物品状态: 'OnSale'-待售, 'Pending'-交接中, 'Completed'-已完成
+export type ItemStatus = 'OnSale' | 'Pending' | 'Completed';
+
 export interface Item {
   ID: number;
   PublisherID: number;
@@ -8,13 +10,14 @@ export interface Item {
   Content: string;
   Price: number;
   Images: string[];
-  Status: 1 | 2 | 3;
+  Status: ItemStatus;
+  CreatedAt?: string;
 }
 
 /**
  * 分页获取物品列表
  */
-export const getItems = (params: { page: number; size: number; status?: number }) => {
+export const getItems = (params: { page: number; size: number; status?: ItemStatus }) => {
   return request<{ items: Item[], total: number }>('/items', 'GET', params);
 };
 

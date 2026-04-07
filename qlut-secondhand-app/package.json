@@ -48,6 +48,9 @@
     "@dcloudio/uni-cli-shared": "3.0.0-3090820231124001",
     "@dcloudio/uni-stacktracey": "3.0.0-3090820231124001",
     "@dcloudio/vite-plugin-uni": "3.0.0-3090820231124001",
+    "miniprogram-api-typings": "^3.12.2",
+    "sass": "^1.99.0",
+    "sass-loader": "^16.0.7",
     "vite": "^4.5.9"
   }
 }

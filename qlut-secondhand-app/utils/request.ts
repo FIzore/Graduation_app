@@ -38,8 +38,8 @@ export const request = <T = any>(
           uni.removeStorageSync('token');
           uni.showToast({ title: '认证过期，请重新登录', icon: 'none' });
           setTimeout(() => {
-            // 假设登录页使用 uni.reLaunch 重定向
-            uni.reLaunch({ url: '/pages/login/login' });
+            // 登录页路径统一为 /pages/auth/login
+            uni.reLaunch({ url: '/pages/auth/login' });
           }, 1500);
           reject(new Error(responseData.msg || 'Unauthorized'));
         } else {
