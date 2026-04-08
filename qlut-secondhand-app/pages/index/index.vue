@@ -1,11 +1,11 @@
 ﻿<template>
   <view class="container">
-    <!-- 椤堕儴鎼滅储鏍? 鐐瑰嚮璺宠浆鎼滅储鎴栬€呭師鍦板睍寮€ -->
+    <!-- 顶部搜索栏 -->
     <view class="search-bar">
-      <text class="search-text">鎼滅储鑷繁鎯宠鐨勯棽缃墿鍝?..</text>
+      <text class="search-text">搜索自己想要的闲置物品...</text>
     </view>
     
-    <!-- 鐗╁搧鐎戝竷娴?-->
+    <!-- 物品瀑布流 -->
     <scroll-view 
       scroll-y 
       class="waterfall" 
@@ -21,10 +21,10 @@
           :key="item.id || (item as any).ID" 
           @click="goToDetail(item.id || (item as any).ID)"
         >
-          <!-- 鍥剧墖灞曠ず: 鍏煎鐩稿璺緞涓庡閮ㄩ摼鎺?-->
+          <!-- 图片展示：兼容相对路径与外部链接 -->
           <image :src="getCoverImage(item.images || (item as any).Images)" mode="aspectFill" class="item-img" />
           
-          <!-- 淇℃伅灞曠ず: 瀹归敊澶у啓瀛楁 -->
+          <!-- 信息展示：兼容大小写字段 -->
           <view class="item-info">
             <text class="item-title">{{ item.title || (item as any).Title || '未命名物品' }}</text>
             <text class="item-price">¥{{ item.price || (item as any).Price || '0.00' }}</text>
@@ -33,7 +33,7 @@
         </view>
       </view>
     </scroll-view>
-    <!-- TabBar 鍦?scroll-view 澶栭儴锛岀‘淇?fixed 瀹氫綅鐢熸晥 -->
+    <!-- TabBar 放在 scroll-view 外，确保 fixed 生效 -->
     <custom-tabbar active="index" />
   </view>
 </template>
@@ -53,13 +53,13 @@ const loading = ref(false);
 const noMore = ref(false);
 const isRefresherTriggered = ref(false);
 
-// 鎷夊彇鍒楄〃鏁版嵁 (Mock 涓?API 鍙岃建鏀寔)
+// 拉取列表数据（API + Mock 回退）
 const fetchItems = async (isRefresh = false) => {
   if (loading.value || (noMore.value && !isRefresh)) return;
   
   loading.value = true;
   try {
-    // 鐘舵€?'OnSale' 浠ｈ〃寰呭敭
+    // 状态 OnSale 代表在售
     const res = await getItems({ page: page.value, pageSize: size.value, status: 'OnSale' });
     
     // 兼容不同返回结构
@@ -81,7 +81,7 @@ const fetchItems = async (isRefresh = false) => {
     
     // Debug 检查数据层级
     if (items.value.length > 0) {
-      console.log('銆愰椤垫覆鏌撴暟鎹鏌ャ€?', JSON.stringify(items.value[0]));
+      console.log('【首页渲染数据检查】', JSON.stringify(items.value[0]));
     }
     
     // 根据返回长度判断是否没有更多
@@ -89,7 +89,7 @@ const fetchItems = async (isRefresh = false) => {
       noMore.value = true;
     }
   } catch (error) {
-    console.error('鑾峰彇鐗╁搧澶辫触, 鍒囨崲鍒?Mock 鏁版嵁', error);
+    console.error('获取物品失败，切换到 Mock 数据', error);
     // Mock 数据作为回退，便于 UI 演示与验证
     if (items.value.length === 0) {
       items.value = [

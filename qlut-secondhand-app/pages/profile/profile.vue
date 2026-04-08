@@ -78,24 +78,25 @@ const currentUserId = ref('');
 const publishedCount = ref(0);
 const appointmentCount = ref(0);
 const serverRoot = BASE_URL.replace('/api/v1', '');
-const defaultAvatar = `${serverRoot}/uploads/profile_picture.png`;
+const defaultAvatar = '/static/default-avatar.png';
+const fallbackAccount = ref('');
 
 // 预留后续接入微信昵称
 const displayName = computed(() => {
   const info = userInfo.value;
-  if (!info) return '未登录用户';
+  const candidate =
+    // 预留：后续若后端返回微信展示名，优先使用
+    info?.displayName ||
+    info?.DisplayName ||
+    // 当前阶段：用户名绑定为注册账号（学号）
+    info?.student_id ||
+    info?.StudentID ||
+    info?.account ||
+    info?.Account ||
+    // 兜底：登录时存储的账号
+    fallbackAccount.value;
 
-  return (
-    info.displayName ||
-    info.DisplayName ||
-    info.nickname ||
-    info.Nickname ||
-    info.student_id ||
-    info.StudentID ||
-    info.account ||
-    info.Account ||
-    '未登录用户'
-  );
+  return candidate ? String(candidate) : '未登录用户';
 });
 
 // 预留后续接入微信头像
@@ -110,10 +111,14 @@ const displayAvatar = computed(() => {
     info?.AvatarURL ||
     '';
 
-  if (!avatar) return defaultAvatar;
-  if (String(avatar).startsWith('http')) return avatar;
-  if (String(avatar).startsWith('/')) return `${serverRoot}${avatar}`;
-  return `${serverRoot}/${avatar}`;
+  const normalizedAvatar = String(avatar).trim();
+  if (!normalizedAvatar || normalizedAvatar === 'null' || normalizedAvatar === 'undefined') {
+    return defaultAvatar;
+  }
+  if (normalizedAvatar.startsWith('http')) return normalizedAvatar;
+  if (normalizedAvatar.startsWith('/static/')) return normalizedAvatar;
+  if (normalizedAvatar.startsWith('/')) return `${serverRoot}${normalizedAvatar}`;
+  return `${serverRoot}/${normalizedAvatar}`;
 });
 
 const extractList = (raw: any): any[] => {
@@ -159,6 +164,7 @@ onShow(() => {
   uni.hideTabBar();
 
   const storedInfo = uni.getStorageSync('userInfo');
+  fallbackAccount.value = String(uni.getStorageSync('lastLoginAccount') || '');
   if (storedInfo) {
     try {
       const parsedUserInfo = typeof storedInfo === 'string' ? JSON.parse(storedInfo) : storedInfo;

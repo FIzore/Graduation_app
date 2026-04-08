@@ -99,9 +99,14 @@ const handleSubmit = async () => {
     if (isLogin.value) {
       const res = await login(formData);
       uni.setStorageSync('token', res.data.token);
-      if (res.data.user) {
-        uni.setStorageSync('userInfo', res.data.user);
-      }
+      // 规范里登录可能只返回 token，这里保证本地一定有可用账号信息
+      const mergedUserInfo = {
+        ...(res.data.user || {}),
+        StudentID: res.data.user?.StudentID || res.data.user?.student_id || formData.student_id,
+        student_id: res.data.user?.student_id || res.data.user?.StudentID || formData.student_id
+      };
+      uni.setStorageSync('userInfo', mergedUserInfo);
+      uni.setStorageSync('lastLoginAccount', formData.student_id);
 
       uni.showToast({ title: '欢迎回来', icon: 'success' });
       uni.$emit('loginSuccess');
