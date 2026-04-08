@@ -15,7 +15,7 @@
       <view class="image-section">
         <view class="image-grid">
           <view class="image-item" v-for="(img, index) in formData.images" :key="index">
-            <image :src="img" mode="aspectFill" class="img-preview" @click="previewImage(index)"></image>
+            <image :src="formatImageUrl(img)" mode="aspectFill" class="img-preview" @click="previewImage(index)"></image>
             <view class="del-badge" @click="removeImage(index)">
               <uni-icons type="closeempty" size="14" color="#fff"></uni-icons>
             </view>
@@ -84,6 +84,9 @@
 import { ref, reactive } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
 import { uploadImage, createItem } from '../../api/item';
+import { BASE_URL } from '../../utils/request';
+
+const serverUrl = BASE_URL.replace('/api/v1', '');
 
 onShow(() => {
   uni.hideTabBar();
@@ -125,10 +128,15 @@ const removeImage = (index: number) => {
   formData.images.splice(index, 1);
 };
 
+const formatImageUrl = (path: string) => {
+  if (!path) return '/static/default.png';
+  return path.startsWith('http') ? path : serverUrl + path;
+};
+
 const previewImage = (index: number) => {
   uni.previewImage({
     current: index,
-    urls: formData.images
+    urls: formData.images.map(img => formatImageUrl(img))
   });
 };
 

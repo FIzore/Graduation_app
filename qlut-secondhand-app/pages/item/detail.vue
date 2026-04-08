@@ -1,14 +1,6 @@
-<template>
+﻿<template>
   <view class="detail-container" v-if="item">
-    <!-- 图片轮播/展示 -->
-    <swiper 
-      class="swiper" 
-      circular 
-      indicator-dots 
-      autoplay 
-      :interval="3000" 
-      :duration="500"
-    >
+    <swiper class="swiper" circular indicator-dots autoplay :interval="3000" :duration="500">
       <swiper-item v-for="(img, index) in formattedImages" :key="index">
         <image :src="img" mode="aspectFill" class="swiper-image" @click="previewImage(index)" />
       </swiper-item>
@@ -17,59 +9,42 @@
       </swiper-item>
     </swiper>
 
-    <!-- 核心信息区 -->
     <view class="info-section">
       <view class="price-row">
-        <text class="price-symbol">￥</text>
-        <text class="price-value">{{ item.Price }}</text>
-        <view class="status-tag" :class="'status-' + item.Status">
-          {{ getStatusText(item.Status) }}
+        <text class="price-symbol">¥</text>
+        <text class="price-value">{{ itemPrice }}</text>
+        <view class="status-tag" :class="'status-' + itemStatus">
+          {{ getStatusText(itemStatus) }}
         </view>
       </view>
       <view class="title-row">
-        <text class="item-title">{{ item.Title }}</text>
+        <text class="item-title">{{ itemTitle }}</text>
       </view>
       <view class="meta-row">
-        <text class="publish-time">发布于：{{ formatTime(item.CreatedAt || new Date()) }}</text>
+        <text class="publish-time">发布于：{{ formatTime(itemTime) }}</text>
       </view>
     </view>
 
-    <!-- 详情描述 -->
     <view class="desc-section">
       <view class="section-title">物品描述</view>
-      <text class="item-desc">{{ item.Content || '暂无详细描述' }}</text>
+      <text class="item-desc">{{ itemContent }}</text>
     </view>
 
-    <!-- 底部操作栏 -->
     <view class="bottom-bar">
       <view class="action-btn-group">
-        <button 
-          v-if="item.Status === 'OnSale'" 
-          class="reserve-btn" 
-          @click="onReserve"
-          :loading="reserving"
-        >
+        <button v-if="itemStatus === 'OnSale'" class="reserve-btn" @click="onReserve" :loading="reserving">
           立即发起预约
         </button>
-        <button 
-          v-else-if="item.Status === 'Pending'" 
-          class="pending-btn" 
-          disabled
-        >
+        <button v-else-if="itemStatus === 'Pending'" class="pending-btn" disabled>
           预约交接中...
         </button>
-        <button 
-          v-else 
-          class="completed-btn" 
-          disabled
-        >
-          物品已交接完毕
+        <button v-else class="completed-btn" disabled>
+          物品已交接完成
         </button>
       </view>
     </view>
   </view>
-  
-  <!-- 加载状态 -->
+
   <view class="loading-state" v-else>
     <text>正在加载详情信息...</text>
   </view>
@@ -78,32 +53,59 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
-import { getItemDetail, createAppointment, type Item } from '../../api/item';
+import { getItemDetail, createAppointment } from '../../api/item';
 import { BASE_URL } from '../../utils/request';
 
-const item = ref<Item | null>(null);
+const item = ref<any | null>(null);
 const reserving = ref(false);
-
-// 图片路径拼接逻辑：基于 API 的 BaseURL 获取根地址
 const serverUrl = BASE_URL.replace('/api/v1', '');
 
+const parseImages = (raw: any): string[] => {
+  if (Array.isArray(raw)) return raw.filter(Boolean);
+  if (typeof raw === 'string') {
+    const text = raw.trim();
+    if (!text) return [];
+    if (text.startsWith('[')) {
+      try {
+        const parsed = JSON.parse(text);
+        return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
+      } catch {
+        return [text];
+      }
+    }
+    return [text];
+  }
+  return [];
+};
+
+const formatImage = (url?: string) => {
+  if (!url) return '/static/default.png';
+  if (url.startsWith('http')) return url;
+  if (url.startsWith('/uploads')) return `http://127.0.0.1:8080${url}`;
+  return `${serverUrl}${url.startsWith('/') ? '' : '/'}${url}`;
+};
+
+const itemId = computed(() => item.value?.ID || item.value?.id || 0);
+const itemTitle = computed(() => item.value?.Title || item.value?.title || '未命名物品');
+const itemPrice = computed(() => item.value?.Price ?? item.value?.price ?? '0.00');
+const itemStatus = computed(() => item.value?.Status || item.value?.status || 'OnSale');
+const itemContent = computed(() => item.value?.Content || item.value?.content || '暂无详细描述');
+const itemTime = computed(() => item.value?.CreatedAt || item.value?.created_at || new Date());
+
 const formattedImages = computed(() => {
-  if (!item.value || !item.value.Images) return [];
-  return item.value.Images.map(img => {
-    // 如果已经是完整路径则跳过，否则拼接服务器地址
-    if (img.startsWith('http')) return img;
-    return `${serverUrl}${img.startsWith('/') ? '' : '/'}${img}`;
-  });
+  const raw = item.value?.Images ?? item.value?.images;
+  const images = parseImages(raw);
+  return images.map((img) => formatImage(img));
 });
 
 const onLoadHandler = async (options: any) => {
   const id = Number(options.id);
   if (!id) {
     uni.showToast({ title: '参数错误', icon: 'none' });
-    setTimeout(() => uni.navigateBack(), 1500);
+    setTimeout(() => uni.navigateBack(), 1000);
     return;
   }
-  
+
   try {
     const res = await getItemDetail(id);
     item.value = res.data;
@@ -114,13 +116,12 @@ const onLoadHandler = async (options: any) => {
 
 onLoad(onLoadHandler);
 
-// 发起预约逻辑
 const onReserve = async () => {
   if (!item.value) return;
 
   uni.showModal({
     title: '确认预约',
-    content: '您确定要预约该物品吗？预约后请尽快与发布者线下交流。',
+    content: '您确定要预约该物品吗？预约后请尽快线下交接。',
     confirmColor: '#007aff',
     success: async (res) => {
       if (res.confirm) {
@@ -132,20 +133,21 @@ const onReserve = async () => {
 
 const handleReserve = async () => {
   if (!item.value) return;
-  
+
   reserving.value = true;
   try {
-    await createAppointment(item.value.ID);
+    await createAppointment(itemId.value);
     uni.showToast({ title: '预约成功', icon: 'success' });
-    // 成功后 local 更新状态避免重新请求
-    item.value.Status = 'Pending';
+
+    if (item.value.Status !== undefined) {
+      item.value.Status = 'Pending';
+    }
+    if (item.value.status !== undefined) {
+      item.value.status = 'Pending';
+    }
   } catch (error: any) {
-    // 精度捕获：如果是 429 锁定状态 (通常由后端返回业务 code 或 429 响应头)
-    // 根据 PRD, 这里需要给出明确提示
-    if (error.message?.includes('429') || error.msg?.includes('锁定')) {
-      uni.showToast({ title: '手慢了，该物品已被他人锁定', icon: 'none' });
-    } else {
-      // 其他错误由 request.ts 统一吐出，详情页只需处理特殊交互
+    if (error.message?.includes('429')) {
+      uni.showToast({ title: '该物品已被锁定', icon: 'none' });
     }
   } finally {
     reserving.value = false;
@@ -160,13 +162,18 @@ const previewImage = (current: number) => {
 };
 
 const getStatusText = (status: string) => {
-  const map: any = { 'OnSale': '待售', 'Pending': '交接中', 'Completed': '已交接' };
+  const map: Record<string, string> = {
+    OnSale: '在售',
+    Pending: '交接中',
+    Completed: '已交接'
+  };
   return map[status] || '未知状态';
 };
 
 const formatTime = (time: any) => {
   const d = new Date(time);
-  return `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')}`;
+  if (Number.isNaN(d.getTime())) return '未知时间';
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 </script>
 
@@ -218,9 +225,20 @@ const formatTime = (time: any) => {
   border-radius: 8rpx;
 }
 
-.status-OnSale { background-color: #e6f7ff; color: #1890ff; }
-.status-Pending { background-color: #fff7e6; color: #fa8c16; }
-.status-Completed { background-color: #f5f5f5; color: #8c8c8c; }
+.status-OnSale {
+  background-color: #e6f7ff;
+  color: #1890ff;
+}
+
+.status-Pending {
+  background-color: #fff7e6;
+  color: #fa8c16;
+}
+
+.status-Completed {
+  background-color: #f5f5f5;
+  color: #8c8c8c;
+}
 
 .item-title {
   font-size: 36rpx;
@@ -267,7 +285,7 @@ const formatTime = (time: any) => {
   display: flex;
   align-items: center;
   padding: 0 30rpx;
-  box-shadow: 0 -2rpx 10rpx rgba(0,0,0,0.05);
+  box-shadow: 0 -2rpx 10rpx rgba(0, 0, 0, 0.05);
   z-index: 100;
 }
 
@@ -283,7 +301,8 @@ const formatTime = (time: any) => {
   border: none;
 }
 
-.pending-btn, .completed-btn {
+.pending-btn,
+.completed-btn {
   background-color: #f5f5f5;
   color: #bfbfbf;
   border-radius: 50rpx;

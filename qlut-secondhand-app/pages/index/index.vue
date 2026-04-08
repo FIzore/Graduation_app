@@ -1,11 +1,11 @@
-<template>
+﻿<template>
   <view class="container">
-    <!-- 顶部搜索栏: 点击跳转搜索或者原地展开 -->
+    <!-- 椤堕儴鎼滅储鏍? 鐐瑰嚮璺宠浆鎼滅储鎴栬€呭師鍦板睍寮€ -->
     <view class="search-bar">
-      <text class="search-text">搜索自己想要的闲置物品...</text>
+      <text class="search-text">鎼滅储鑷繁鎯宠鐨勯棽缃墿鍝?..</text>
     </view>
     
-    <!-- 物品瀑布流 -->
+    <!-- 鐗╁搧鐎戝竷娴?-->
     <scroll-view 
       scroll-y 
       class="waterfall" 
@@ -21,19 +21,19 @@
           :key="item.id || (item as any).ID" 
           @click="goToDetail(item.id || (item as any).ID)"
         >
-          <!-- 图片展示: 兼容相对路径与外部链接 -->
+          <!-- 鍥剧墖灞曠ず: 鍏煎鐩稿璺緞涓庡閮ㄩ摼鎺?-->
           <image :src="getCoverImage(item.images || (item as any).Images)" mode="aspectFill" class="item-img" />
           
-          <!-- 信息展示: 容错大写字段 -->
+          <!-- 淇℃伅灞曠ず: 瀹归敊澶у啓瀛楁 -->
           <view class="item-info">
             <text class="item-title">{{ item.title || (item as any).Title || '未命名物品' }}</text>
-            <text class="item-price">￥{{ item.price || (item as any).Price || '0.00' }}</text>
+            <text class="item-price">¥{{ item.price || (item as any).Price || '0.00' }}</text>
             <text class="item-status" v-if="item.status === 'Pending' || (item as any).Status === 'Pending'">预约交接中</text>
           </view>
         </view>
       </view>
     </scroll-view>
-    <!-- TabBar 在 scroll-view 外部，确保 fixed 定位生效 -->
+    <!-- TabBar 鍦?scroll-view 澶栭儴锛岀‘淇?fixed 瀹氫綅鐢熸晥 -->
     <custom-tabbar active="index" />
   </view>
 </template>
@@ -53,16 +53,16 @@ const loading = ref(false);
 const noMore = ref(false);
 const isRefresherTriggered = ref(false);
 
-// 拉取列表数据 (Mock 与 API 双轨支持)
+// 鎷夊彇鍒楄〃鏁版嵁 (Mock 涓?API 鍙岃建鏀寔)
 const fetchItems = async (isRefresh = false) => {
   if (loading.value || (noMore.value && !isRefresh)) return;
   
   loading.value = true;
   try {
-    // 状态 'OnSale' 代表待售
-    const res = await getItems({ page: page.value, size: size.value, status: 'OnSale' });
+    // 鐘舵€?'OnSale' 浠ｈ〃寰呭敭
+    const res = await getItems({ page: page.value, pageSize: size.value, status: 'OnSale' });
     
-    // 兼容可能不同的返回结构包裹
+    // 兼容不同返回结构
     let newItems = [];
     const responseData = res.data as any;
     if (Array.isArray(responseData)) {
@@ -81,16 +81,16 @@ const fetchItems = async (isRefresh = false) => {
     
     // Debug 检查数据层级
     if (items.value.length > 0) {
-      console.log('【首页渲染数据检查】:', JSON.stringify(items.value[0]));
+      console.log('銆愰椤垫覆鏌撴暟鎹鏌ャ€?', JSON.stringify(items.value[0]));
     }
     
-    // 根据返回长度判断是否没有更多了
+    // 根据返回长度判断是否没有更多
     if (!newItems || newItems.length < size.value) {
       noMore.value = true;
     }
   } catch (error) {
-    console.error('获取物品失败, 切换到 Mock 数据', error);
-    // [Mock 数据作为回退，方便 UI 演示与验证]
+    console.error('鑾峰彇鐗╁搧澶辫触, 鍒囨崲鍒?Mock 鏁版嵁', error);
+    // Mock 数据作为回退，便于 UI 演示与验证
     if (items.value.length === 0) {
       items.value = [
         { id: 1, publisher_id: 101, title: '九成新高数课本，笔记清晰', content: '保护得很好', price: 15.0, images: [''], status: 'OnSale' },
@@ -126,7 +126,7 @@ const goToDetail = (id: number) => {
   });
 };
 
-// 解析图片地址：健壮地处理 JSON 字符串
+// 解析图片地址：兼容 string[] / JSON 字符串 / 相对路径
 const getCoverImage = (imagesStr: any) => {
   if (!imagesStr) return '/static/default.png';
   
@@ -150,8 +150,10 @@ const getCoverImage = (imagesStr: any) => {
     return '/static/default.png';
   }
   
-  const first = imgList[0].replace(/"/g, ''); // 移除可能残留的引号
-  return first.startsWith('http') ? first : serverUrl + first;
+  const first = imgList[0].replace(/"/g, '');
+  if (first.startsWith('http')) return first;
+  if (first.startsWith('/uploads')) return `http://127.0.0.1:8080${first}`;
+  return `${serverUrl}${first.startsWith('/') ? '' : '/'}${first}`;
 };
 
 onMounted(() => {
@@ -252,3 +254,4 @@ onShow(() => {
   padding: 20rpx 0;
 }
 </style>
+

@@ -1,4 +1,4 @@
-export const BASE_URL = 'http://127.0.0.1:8080/api/v1';
+﻿export const BASE_URL = 'http://127.0.0.1:8080/api/v1';
 
 export interface HttpResponse<T = any> {
   code: number;
@@ -8,7 +8,7 @@ export interface HttpResponse<T = any> {
 
 /**
  * 封装 uni.request
- * 自动拦截 token 并按规范处理响应
+ * 自动注入 token，并按统一响应格式处理错误
  */
 export const request = <T = any>(
   url: string,
@@ -17,10 +17,9 @@ export const request = <T = any>(
   header: any = {}
 ): Promise<HttpResponse<T>> => {
   return new Promise((resolve, reject) => {
-    // 自动携带 token
     const token = uni.getStorageSync('token');
     if (token) {
-      header['Authorization'] = `Bearer ${token}`;
+      header.Authorization = `Bearer ${token}`;
     }
 
     uni.request({
@@ -28,25 +27,28 @@ export const request = <T = any>(
       method,
       data,
       header,
+      timeout: 10000,
       success: (res: any) => {
         const responseData = res.data as HttpResponse<T>;
-        
+
         if (responseData.code === 200) {
           resolve(responseData);
-        } else if (responseData.code === 401) {
-          // 状态401：Token 无效或过期，清理并返回登录
+          return;
+        }
+
+        if (responseData.code === 401) {
+          // Token 无效或过期，清理登录态并跳回登录页
           uni.removeStorageSync('token');
           uni.showToast({ title: '认证过期，请重新登录', icon: 'none' });
           setTimeout(() => {
-            // 登录页路径统一为 /pages/auth/login
             uni.reLaunch({ url: '/pages/auth/login' });
           }, 1500);
           reject(new Error(responseData.msg || 'Unauthorized'));
-        } else {
-          // 其他业务错误
-          uni.showToast({ title: responseData.msg || '交互失败', icon: 'none' });
-          reject(new Error(responseData.msg || 'Request failed'));
+          return;
         }
+
+        uni.showToast({ title: responseData.msg || '请求失败', icon: 'none' });
+        reject(new Error(responseData.msg || 'Request failed'));
       },
       fail: (err) => {
         uni.showToast({ title: '网络通信错误', icon: 'none' });

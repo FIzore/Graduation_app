@@ -1,7 +1,7 @@
-import { request } from '../utils/request';
+﻿import { request } from '../utils/request';
 
 /**
- * 登录鉴权接口
+ * 登录认证接口
  */
 export const login = (data: { student_id: string; password: string }) => {
   console.log('Sending Auth Params (Login):', data);
@@ -17,7 +17,7 @@ export const register = (data: { student_id: string; password: string }) => {
 };
 
 /**
- * 微信账号绑定接口 (预留)
+ * 微信账号绑定接口（预留）
  */
 export const bindWeChat = (code: string) => {
   return request('/auth/bind-wechat', 'POST', { code });

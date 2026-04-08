@@ -1,49 +1,39 @@
-<template>
+﻿<template>
   <view class="auth-container">
-    <!-- 顶部 Slogan -->
     <view class="header-section">
       <view class="logo-placeholder"></view>
       <text class="slogan">让校园闲置流动起来</text>
       <text class="sub-slogan">极简 · 高效 · 校园信息撮合</text>
     </view>
 
-    <!-- 表单卡片 -->
     <view class="form-card">
       <view class="tab-header">
-        <text 
-          class="tab-item" 
-          :class="{ active: isLogin }" 
-          @click="isLogin = true"
-        >登录</text>
-        <text 
-          class="tab-item" 
-          :class="{ active: !isLogin }" 
-          @click="isLogin = false"
-        >注册</text>
+        <text class="tab-item" :class="{ active: isLogin }" @click="isLogin = true">登录</text>
+        <text class="tab-item" :class="{ active: !isLogin }" @click="isLogin = false">注册</text>
       </view>
 
       <view class="input-group">
         <view class="input-item">
           <uni-icons type="person" size="20" color="#999"></uni-icons>
-          <input 
-            type="text" 
-            v-model="formData.student_id" 
-            placeholder="请输入学号/ID" 
+          <input
+            type="text"
+            v-model="formData.student_id"
+            placeholder="请输入学号（10-12位）"
             placeholder-class="placeholder"
           />
         </view>
         <view class="input-item">
           <uni-icons type="locked" size="20" color="#999"></uni-icons>
-          <input 
-            :type="showPassword ? 'text' : 'password'" 
-            v-model="formData.password" 
-            placeholder="请输入密码" 
+          <input
+            :password="!showPassword"
+            v-model="formData.password"
+            placeholder="请输入密码（至少6位）"
             placeholder-class="placeholder"
           />
-          <uni-icons 
-            :type="showPassword ? 'eye-filled' : 'eye-slash-filled'" 
-            size="20" 
-            color="#ccc" 
+          <uni-icons
+            :type="showPassword ? 'eye-filled' : 'eye-slash-filled'"
+            size="20"
+            color="#ccc"
             @click="showPassword = !showPassword"
           ></uni-icons>
         </view>
@@ -59,7 +49,6 @@
       </view>
     </view>
 
-    <!-- 第三方登录区 -->
     <view class="footer-section">
       <view class="divider">
         <view class="line"></view>
@@ -75,7 +64,7 @@
         </view>
       </view>
     </view>
-    
+
     <view class="back-home" @click="goHome">
       <text>返回首页</text>
     </view>
@@ -110,11 +99,13 @@ const handleSubmit = async () => {
     if (isLogin.value) {
       const res = await login(formData);
       uni.setStorageSync('token', res.data.token);
-      uni.showToast({ title: '欢迎选回', icon: 'success' });
-      
-      // 触发全局登录成功事件
+      if (res.data.user) {
+        uni.setStorageSync('userInfo', res.data.user);
+      }
+
+      uni.showToast({ title: '欢迎回来', icon: 'success' });
       uni.$emit('loginSuccess');
-      
+
       setTimeout(() => {
         uni.reLaunch({ url: '/pages/index/index' });
       }, 1000);
@@ -123,8 +114,7 @@ const handleSubmit = async () => {
       uni.showToast({ title: '注册成功，请登录', icon: 'success' });
       isLogin.value = true;
     }
-  } catch (err: any) {
-    // 错误已由 request.ts 拦截提示
+  } catch (err) {
     console.error(err);
   } finally {
     loading.value = false;
@@ -136,8 +126,7 @@ const handleWeChatAuth = () => {
     provider: 'weixin',
     success: async (res) => {
       console.log('WeChat login code:', res.code);
-      
-      // 检查当前是否有账号登录
+
       const token = uni.getStorageSync('token');
       if (!token) {
         return uni.showModal({
@@ -147,8 +136,7 @@ const handleWeChatAuth = () => {
           confirmText: '去登录'
         });
       }
-      
-      // 已登录状态下进行绑定
+
       try {
         await bindWeChat(res.code);
         uni.showToast({ title: '微信绑定成功', icon: 'success' });
@@ -156,7 +144,7 @@ const handleWeChatAuth = () => {
         console.error('绑定失败', err);
       }
     },
-    fail: (err) => {
+    fail: () => {
       uni.showToast({ title: '微信授权失败', icon: 'none' });
     }
   });
@@ -223,7 +211,7 @@ const goHome = () => {
       &.active {
         color: #007aff;
         font-weight: bold;
-        
+
         &::after {
           content: '';
           position: absolute;
@@ -261,7 +249,7 @@ const goHome = () => {
         font-size: 28rpx;
         color: #333;
       }
-      
+
       .placeholder {
         color: #ccc;
       }
@@ -280,7 +268,7 @@ const goHome = () => {
     border: none;
     box-shadow: 0 10rpx 20rpx rgba(0, 122, 255, 0.15);
     margin-top: 40rpx;
-    
+
     &:active {
       opacity: 0.9;
       transform: scale(0.98);
@@ -292,7 +280,7 @@ const goHome = () => {
     display: flex;
     align-items: center;
     justify-content: center;
-    
+
     .agreement-text {
       font-size: 24rpx;
       color: #999;
