@@ -117,6 +117,7 @@ const chooseImg = () => {
         formData.images.push(...urls);
       } catch (e) {
         console.error('上传失败', e);
+        uni.showToast({ title: '图片上传失败，请重试', icon: 'none' });
       } finally {
         uni.hideLoading();
       }

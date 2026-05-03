@@ -50,6 +50,13 @@ export const getMyAppointments = () => {
 };
 
 /**
+ * 确认交接完成
+ */
+export const confirmAppointment = (id: number) => {
+  return request(`/appointments/${id}/confirm`, 'PUT');
+};
+
+/**
  * 单图上传
  * 使用原生 uni.uploadFile，并封装为 Promise
  */

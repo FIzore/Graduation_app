@@ -30,6 +30,12 @@
               <text class="card-price">¥ {{ getItemEntity(app).Price || getItemEntity(app).price || '0.00' }}</text>
             </view>
           </view>
+
+          <view class="card-footer" v-if="(app.Status || app.status) == 1" @click.stop="">
+            <view class="confirm-btn" @click.stop.prevent="handleConfirm(app)">
+              <text>确认交接</text>
+            </view>
+          </view>
         </view>
       </view>
 
@@ -44,7 +50,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
-import { getMyAppointments } from '../../api/item';
+import { getMyAppointments, confirmAppointment } from '../../api/item';
 import { BASE_URL } from '../../utils/request';
 
 const API_HOST = 'http://127.0.0.1:8080';
@@ -52,6 +58,7 @@ const SERVER_ROOT = (BASE_URL || `${API_HOST}/api/v1`).replace('/api/v1', '');
 
 const list = ref<any[]>([]);
 const loading = ref(false);
+const confirming = ref(false);
 
 const goBack = () => {
   uni.navigateBack();
@@ -96,6 +103,10 @@ const getItemEntity = (app: any) => {
 const getItemId = (app: any) => {
   const item = getItemEntity(app);
   return item.ID || item.id;
+};
+
+const getAppointmentId = (app: any) => {
+  return app.ID || app.id;
 };
 
 const getAppointmentCover = (app: any) => {
@@ -144,6 +155,30 @@ const loadAppointments = async () => {
   } finally {
     loading.value = false;
   }
+};
+
+const handleConfirm = (app: any) => {
+  const id = getAppointmentId(app);
+  if (!id || confirming.value) return;
+
+  uni.showModal({
+    title: '确认交接',
+    content: '确认已完成线下交接？',
+    success: async (res) => {
+      if (res.confirm) {
+        confirming.value = true;
+        try {
+          await confirmAppointment(id);
+          uni.showToast({ title: '交接确认成功', icon: 'success' });
+          await loadAppointments();
+        } catch (e) {
+          console.error('确认交接失败', e);
+        } finally {
+          confirming.value = false;
+        }
+      }
+    }
+  });
 };
 
 onShow(() => {
@@ -226,6 +261,27 @@ onShow(() => {
 
       &.status-3 {
         color: #999;
+      }
+    }
+  }
+
+  .card-footer {
+    margin-top: 20rpx;
+    padding-top: 16rpx;
+    border-top: 1rpx solid #f5f5f5;
+    display: flex;
+    justify-content: flex-end;
+
+    .confirm-btn {
+      padding: 12rpx 40rpx;
+      background-color: #07c160;
+      border-radius: 8rpx;
+      font-size: 26rpx;
+      color: #fff;
+      font-weight: bold;
+
+      &:active {
+        opacity: 0.85;
       }
     }
   }
