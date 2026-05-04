@@ -4,3 +4,6 @@ unpackage/
 dist/
 dev/
 .DS_Store
+
+# AI Agent Metadata
+.kilo/

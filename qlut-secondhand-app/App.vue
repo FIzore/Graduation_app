@@ -1,12 +1,17 @@
 <script setup lang="ts">
 import { onLaunch, onShow, onHide } from "@dcloudio/uni-app";
 import { useWebSocket } from "./utils/websocket";
+import { conversationStore } from "./store/conversation";
 
 const ws = useWebSocket();
 
 onLaunch(() => {
   console.log("App Launch");
   ws.connect();
+  ws.on('message', (msg) => {
+    console.log('[App] WS message:', msg);
+    conversationStore.updateConversation(msg);
+  });
 });
 
 onShow(() => {

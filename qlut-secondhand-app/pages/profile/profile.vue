@@ -61,7 +61,7 @@
       <view class="logout-btn login-btn" @click="goLogin">去登录</view>
     </view>
 
-    <custom-tabbar active="me" />
+    <custom-tabbar active="me" :unread-count="conversationStore.unreadTotal" />
   </view>
 </template>
 
@@ -69,6 +69,7 @@
 import { computed, ref } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
 import CustomTabbar from '../../components/custom-tabbar.vue';
+import { conversationStore } from '../../store/conversation';
 import { getItems, getMyAppointments } from '../../api/item';
 import { BASE_URL } from '../../utils/request';
 

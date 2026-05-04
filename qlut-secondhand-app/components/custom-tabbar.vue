@@ -10,7 +10,13 @@
       
       <!-- 消息 -->
       <view class="tab-item" :class="{ active: active === 'message' }" @click="switchTab('message')">
-        <uni-icons :type="active === 'message' ? 'chat-filled' : 'chat'" size="24" :color="active === 'message' ? '#07c160' : '#999'"></uni-icons>
+        <view class="icon-wrap">
+          <uni-icons :type="active === 'message' ? 'chat-filled' : 'chat'" size="24" :color="active === 'message' ? '#07c160' : '#999'"></uni-icons>
+          <view class="badge" v-if="unreadCount > 0">
+            <text v-if="unreadCount <= 99">{{ unreadCount }}</text>
+            <text v-else>99+</text>
+          </view>
+        </view>
         <text class="tab-text">消息</text>
       </view>
       
@@ -35,7 +41,8 @@
  * @property {string} active 当前激活页面的标识符 ('index' | 'message' | 'post' | 'me')
  */
 const props = defineProps<{
-  active: 'index' | 'message' | 'post' | 'me'
+  active: 'index' | 'message' | 'post' | 'me';
+  unreadCount?: number;
 }>();
 
 const switchTab = (tab: string) => {
@@ -82,6 +89,30 @@ const switchTab = (tab: string) => {
     justify-content: center;
     height: 110rpx;
     padding-top: 10rpx;
+    
+    .icon-wrap {
+      position: relative;
+
+      .badge {
+        position: absolute;
+        top: -10rpx;
+        right: -20rpx;
+        min-width: 32rpx;
+        height: 32rpx;
+        background-color: #ff3b30;
+        border-radius: 16rpx;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 6rpx;
+
+        text {
+          font-size: 18rpx;
+          color: #fff;
+          font-weight: bold;
+        }
+      }
+    }
     
     .tab-text {
       font-size: 20rpx;

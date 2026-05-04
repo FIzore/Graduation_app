@@ -34,7 +34,7 @@
       </view>
     </scroll-view>
     <!-- TabBar 放在 scroll-view 外，确保 fixed 生效 -->
-    <custom-tabbar active="index" />
+    <custom-tabbar active="index" :unread-count="conversationStore.unreadTotal" />
   </view>
 </template>
 
@@ -43,6 +43,7 @@ import { ref, onMounted } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
 import { getItems, type Item } from '../../api/item';
 import { IMAGE_BASE_URL } from '../../config';
+import { conversationStore } from '../../store/conversation';
 import CustomTabbar from '../../components/custom-tabbar.vue';
 
 const serverUrl = IMAGE_BASE_URL;
