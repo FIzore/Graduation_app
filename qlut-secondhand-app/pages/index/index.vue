@@ -42,10 +42,10 @@
 import { ref, onMounted } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
 import { getItems, type Item } from '../../api/item';
-import { BASE_URL } from '../../utils/request';
+import { IMAGE_BASE_URL } from '../../config';
 import CustomTabbar from '../../components/custom-tabbar.vue';
 
-const serverUrl = BASE_URL.replace('/api/v1', '');
+const serverUrl = IMAGE_BASE_URL;
 const items = ref<Item[]>([]);
 const page = ref(1);
 const size = ref(10);
@@ -152,7 +152,7 @@ const getCoverImage = (imagesStr: any) => {
   
   const first = imgList[0].replace(/"/g, '');
   if (first.startsWith('http')) return first;
-  if (first.startsWith('/uploads')) return `http://127.0.0.1:8080${first}`;
+  if (first.startsWith('/uploads')) return `${IMAGE_BASE_URL}${first}`;
   return `${serverUrl}${first.startsWith('/') ? '' : '/'}${first}`;
 };
 

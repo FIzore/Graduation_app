@@ -1,4 +1,6 @@
-﻿export const BASE_URL = 'http://127.0.0.1:8080/api/v1';
+﻿import { API_BASE_URL } from '../config';
+
+export const BASE_URL = API_BASE_URL;
 
 export interface HttpResponse<T = any> {
   code: number;

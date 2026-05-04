@@ -54,11 +54,11 @@
 import { ref, computed } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
 import { getItemDetail, createAppointment } from '../../api/item';
-import { BASE_URL } from '../../utils/request';
+import { IMAGE_BASE_URL } from '../../config';
 
 const item = ref<any | null>(null);
 const reserving = ref(false);
-const serverUrl = BASE_URL.replace('/api/v1', '');
+const serverUrl = IMAGE_BASE_URL;
 
 const parseImages = (raw: any): string[] => {
   if (Array.isArray(raw)) return raw.filter(Boolean);
@@ -81,7 +81,7 @@ const parseImages = (raw: any): string[] => {
 const formatImage = (url?: string) => {
   if (!url) return '/static/default.png';
   if (url.startsWith('http')) return url;
-  if (url.startsWith('/uploads')) return `http://127.0.0.1:8080${url}`;
+  if (url.startsWith('/uploads')) return `${IMAGE_BASE_URL}${url}`;
   return `${serverUrl}${url.startsWith('/') ? '' : '/'}${url}`;
 };
 

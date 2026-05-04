@@ -41,10 +41,7 @@
 import { ref } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
 import { getItems } from '../../api/item';
-import { BASE_URL } from '../../utils/request';
-
-const API_HOST = 'http://127.0.0.1:8080';
-const SERVER_ROOT = (BASE_URL || `${API_HOST}/api/v1`).replace('/api/v1', '');
+import { IMAGE_BASE_URL } from '../../config';
 
 const goBack = () => {
   uni.navigateBack();
@@ -91,9 +88,8 @@ const getUserIdFromToken = (): string => {
 const formatImage = (url?: string) => {
   if (!url) return '/static/default.png';
   if (url.startsWith('http')) return url;
-  if (url.startsWith('/uploads')) return `${API_HOST}${url}`;
-  if (url.startsWith('/')) return `${SERVER_ROOT}${url}`;
-  return `${SERVER_ROOT}/${url}`;
+  if (url.startsWith('/uploads') || url.startsWith('/')) return `${IMAGE_BASE_URL}${url}`;
+  return `${IMAGE_BASE_URL}/${url}`;
 };
 
 const parseImages = (raw: any): string[] => {

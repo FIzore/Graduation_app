@@ -84,9 +84,9 @@
 import { ref, reactive } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
 import { uploadImage, createItem } from '../../api/item';
-import { BASE_URL } from '../../utils/request';
+import { IMAGE_BASE_URL } from '../../config';
 
-const serverUrl = BASE_URL.replace('/api/v1', '');
+const serverUrl = IMAGE_BASE_URL;
 
 onShow(() => {
   uni.hideTabBar();
