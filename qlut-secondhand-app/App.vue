@@ -1,11 +1,18 @@
 <script setup lang="ts">
 import { onLaunch, onShow, onHide } from "@dcloudio/uni-app";
+import { useWebSocket } from "./utils/websocket";
+
+const ws = useWebSocket();
+
 onLaunch(() => {
   console.log("App Launch");
+  ws.connect();
 });
+
 onShow(() => {
   console.log("App Show");
 });
+
 onHide(() => {
   console.log("App Hide");
 });
