@@ -79,7 +79,7 @@ const formatConvTime = (timeStr: string) => {
   return (d.getMonth() + 1) + '-' + d.getDate();
 };
 
-const goToChat = (conv: { userId: number; nickname: string; itemId: number; itemTitle: string; itemCover: string }) => {
+const goToChat = (conv: { userId: number; nickname: string; itemId: number; itemTitle: string; itemCover: string; itemPrice?: string | number }) => {
   store.markRead(conv.userId, conv.itemId);
   uni.navigateTo({
     url: '/pages/chat/room?userId=' + conv.userId
@@ -87,6 +87,7 @@ const goToChat = (conv: { userId: number; nickname: string; itemId: number; item
       + '&itemId=' + conv.itemId
       + '&itemTitle=' + encodeURIComponent(conv.itemTitle || '')
       + '&itemCover=' + encodeURIComponent(conv.itemCover || '')
+      + '&itemPrice=' + encodeURIComponent(String(conv.itemPrice || ''))
   });
 };
 

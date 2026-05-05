@@ -236,3 +236,12 @@ WebSocket 历史消息缝合与细节打磨：
 - **交互打磨**：空搜索拦截、`confirm-type="search"` 键盘搜索、新搜索时自动重置页码与列表
 - **契约对齐**：`api/item.ts` 的 `createAppointment` 参数 `item_id` → `itemId`；`getChatHistory` 参数 `target_id/page_size` → `targetId/pageSize`；ChatHistoryResponse 响应结构匹配后端直接数组格式
 - **一物一聊架构**：`conversationStore` 密钥改为 `${otherId}_${itemId}` 组合键，Conversation 新增 `itemId/itemTitle/itemCover`，聊天室发送时主动回写 sender 侧会话列表，消息列表展示物品标签
+
+
+0.9.3
+协议同步与聊天室上下文锚点实装：
+
+- **契约对齐**：同步后端 P0 技术债清理结果，`api/user.ts` 新增 `ping()` 与 `PingResponse`，前端鉴权探测返回值统一切换为 `userId`，本次新增请求参数全面使用 camelCase
+- **IM 增强**：`pages/chat/room.vue` 顶部实装商品上下文锚点卡片，动态展示 `itemCover / itemTitle / itemPrice`，提供“查看详情”回跳入口；通过 `msg-content.with-anchor { margin-top: 160rpx !important; }` 深度修复 fixed 锚点对首条消息、未读气泡的遮挡问题
+- **行为埋点**：`api/item.ts` 新增 `reportBehaviors()`，详情页加载成功后静默上报 `view` 行为；同时增加本地 `token` 守卫，未登录用户不再触发 `/behaviors` 请求，修复了 401 全局重定向导致的详情页误跳登录 Bug
+- **工程化**：`utils/request.ts` 引入结构化 `RequestError`，统一封装 `code / msg` 错误上下文，提升后续登录、风控、限流等错误分支的可维护性

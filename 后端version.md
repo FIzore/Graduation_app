@@ -172,6 +172,8 @@ WebSocket 引擎加固：sync.Map 重构客户端管理；readPump/writePump 添
 
 安全机制升级：Token黑名单登出 + 登录防暴力破解限流
 
+wx登陆， 学生身份认证
+
 ### 🛠️ 实现内容摘要
 
 - **Token 黑名单登出**: `POST /api/v1/auth/logout` 将当前 JWT 存入 Redis `blacklist:token:*`，TTL 精确设置为 Token 剩余有效期。JWT 中间件在校验时同步查询黑名单，已登出 Token 立即失效。
@@ -179,22 +181,12 @@ WebSocket 引擎加固：sync.Map 重构客户端管理；readPump/writePump 添
 - **登录防爆破限流**: 同一学号 15 分钟内连续密码错误 5 次，触发 `lock:login:*` Redis 锁，锁定账号登录 15 分钟。正确登录取消锁定。
 - **辅助方法**: `jwtx.ParseTokenWithExpiry` 解析 Token 同时返回剩余秒数；`redisx.SetWithExpire` / `redisx.Exists` 简化 Redis 操作。
 
-todo
+# 0.27
 
-### 二、 运营后台与数据治理 (全栈待补)
+搜索内核实装：Repository 层 LIKE 模糊匹配全链路贯通
 
-4. **后台管理体系 (Admin Panel)**
-   * **现状：** 整个系统目前只有“学生用户”视角，没有“平台管理员”视角。
-   * **影响：** 缺乏管理员强制下架违规物品、封禁异地异常登录账号、审查敏感词落库记录的管控 API。
-5. **可视化大屏统计接口 (Data Dashboard)**
-   * **现状：** PRD 3.4 明确要求的核心亮点——“实时展示平台日活、毕业季信息发布热力图”完全没有支撑接口。
-   * **影响：** 毕业答辩时，如果能大屏展示系统在突发潮汐流量下的各项指标（如 Redis 命中率、活跃预约量），将是极具震撼力的视觉展现，这部分 SQL 聚合查询和时序数据接口还需要写。
+### 🛠️ 实现内容摘要
 
-### 三、 Python AI 微服务体系 (架构独立扩展)
-
-6. **CNN 图像智能分类与合规审查**
-   * **现状：** 0 进度。
-   * **目标：** 建立独立的 FastAPI 服务，拦截色情/涉爆图片，并辅助卖家在上传闲置图片时，一键自动填入物品分类。
-7. **NCF 神经协同过滤算法**
-   * **现状：** 0 进度。
-   * **目标：** 离线读取埋点数据，训练并在 Redis 中生成 `recommends:user:{id}` 缓存。
+- **搜索内核实装**: `repository/item_repository.go` 中通过 GORM `title LIKE ? OR content LIKE ?` 占位符实现模糊匹配，支持中英文关键词搜索。
+- **全链路贯通**: API 层 `c.Query("keyword")` → Service `GetItemList` 透传 → Repository `GetItems` 链式组合，与已有 `status`/`category` 过滤条件协同工作。
+- **性能与安全**: 参数化查询杜绝 SQL 注入；LIKE 条件在 `status`/`category` 等精确定位条件之后附加，利用索引前置减少全表扫描范围。

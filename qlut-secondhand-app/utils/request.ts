@@ -8,6 +8,18 @@ export interface HttpResponse<T = any> {
   data: T;
 }
 
+export interface RequestError extends Error {
+  code?: number;
+  msg?: string;
+}
+
+const createRequestError = (code: number, msg: string): RequestError => {
+  const error = new Error(msg) as RequestError;
+  error.code = code;
+  error.msg = msg;
+  return error;
+};
+
 /**
  * 封装 uni.request
  * 自动注入 token，并按统一响应格式处理错误
@@ -45,12 +57,12 @@ export const request = <T = any>(
           setTimeout(() => {
             uni.reLaunch({ url: '/pages/auth/login' });
           }, 1500);
-          reject(new Error(responseData.msg || 'Unauthorized'));
+          reject(createRequestError(401, responseData.msg || 'Unauthorized'));
           return;
         }
 
         uni.showToast({ title: responseData.msg || '请求失败', icon: 'none' });
-        reject(new Error(responseData.msg || 'Request failed'));
+        reject(createRequestError(responseData.code, responseData.msg || 'Request failed'));
       },
       fail: (err) => {
         uni.showToast({ title: '网络通信错误', icon: 'none' });

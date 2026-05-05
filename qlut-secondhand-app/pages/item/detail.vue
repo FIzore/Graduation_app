@@ -60,7 +60,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
-import { getItemDetail, createAppointment } from '../../api/item';
+import { getItemDetail, createAppointment, reportBehaviors } from '../../api/item';
 import { IMAGE_BASE_URL } from '../../config';
 import { conversationStore } from '../../store/conversation';
 
@@ -103,6 +103,19 @@ const itemTime = computed(() => item.value?.CreatedAt || item.value?.created_at 
 const publisherId = computed(() => item.value?.PublisherID ?? item.value?.publisher_id ?? item.value?.publisherId ?? 0);
 const publisherNickname = computed(() => item.value?.Nickname ?? item.value?.nickname ?? '卖家');
 
+const sendViewBehavior = async (id: number) => {
+  const token = uni.getStorageSync('token');
+  if (!token) {
+    return;
+  }
+
+  try {
+    await reportBehaviors([{ itemId: id, behaviorType: 'view' }]);
+  } catch (error) {
+    console.warn('上报浏览埋点失败:', error);
+  }
+};
+
 const isSelf = computed(() => {
   const myId = conversationStore.getMyUserId();
   return myId > 0 && myId === Number(publisherId.value);
@@ -125,6 +138,7 @@ const onLoadHandler = async (options: any) => {
   try {
     const res = await getItemDetail(id);
     item.value = res.data;
+    sendViewBehavior(id);
   } catch (error) {
     console.error('获取详情失败:', error);
   }
@@ -177,8 +191,9 @@ const goToChat = () => {
   const iid = itemId.value;
   const iTitle = itemTitle.value;
   const iCover = formattedImages.value[0] || '';
+  const iPrice = String(itemPrice.value ?? '');
   uni.navigateTo({
-    url: `/pages/chat/room?userId=${pid}&nickname=${encodeURIComponent(nick)}&itemId=${iid}&itemTitle=${encodeURIComponent(iTitle)}&itemCover=${encodeURIComponent(iCover)}`
+    url: `/pages/chat/room?userId=${pid}&nickname=${encodeURIComponent(nick)}&itemId=${iid}&itemTitle=${encodeURIComponent(iTitle)}&itemCover=${encodeURIComponent(iCover)}&itemPrice=${encodeURIComponent(iPrice)}`
   });
 };
 
@@ -199,7 +214,8 @@ const getStatusText = (status: string) => {
 };
 
 const formatTime = (time: any) => {
-  const d = new Date(time);
+  const normalizedTime = typeof time === 'string' ? time.replace(/-/g, '/') : time;
+  const d = new Date(normalizedTime);
   if (Number.isNaN(d.getTime())) return '未知时间';
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };

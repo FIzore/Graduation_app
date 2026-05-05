@@ -11,6 +11,17 @@
       <view class="nav-placeholder"></view>
     </view>
 
+    <view v-if="itemId" class="context-anchor" :style="{ top: navAnchorTop + 'px' }">
+      <image class="anchor-cover" :src="itemCover || '/static/default.png'" mode="aspectFill"></image>
+      <view class="anchor-main">
+        <text class="anchor-title">{{ itemTitle || '当前沟通物品' }}</text>
+        <text class="anchor-price" v-if="itemPrice">约 {{ itemPrice }}</text>
+      </view>
+      <view class="anchor-action" @click="goToDetail">
+        <text class="anchor-action-text">查看详情</text>
+      </view>
+    </view>
+
     <scroll-view
       class="msg-list"
       scroll-y
@@ -18,31 +29,33 @@
       :scroll-with-animation="true"
       @scrolltoupper="onScrollToUpper"
     >
-      <view class="loading-hint" v-if="loadingHistory">
-        <text>加载中...</text>
-      </view>
-      <view class="msg-item" v-for="msg in messages" :key="msg.id" :class="msg.isMine ? 'msg-right' : 'msg-left'">
-        <image
-          v-if="!msg.isMine"
-          class="msg-avatar"
-          :src="otherAvatar || '/static/default-avatar.png'"
-          mode="aspectFill"
-        ></image>
+      <view class="msg-content" :class="{ 'with-anchor': itemId }">
+        <view class="loading-hint" v-if="loadingHistory">
+          <text>加载中...</text>
+        </view>
+        <view class="msg-item" v-for="msg in messages" :key="msg.id" :class="msg.isMine ? 'msg-right' : 'msg-left'">
+          <image
+            v-if="!msg.isMine"
+            class="msg-avatar"
+            :src="otherAvatar || '/static/default-avatar.png'"
+            mode="aspectFill"
+          ></image>
 
-        <view class="msg-bubble" :class="msg.isMine ? 'bubble-mine' : 'bubble-other'">
-          <text class="msg-text">{{ msg.content }}</text>
+          <view class="msg-bubble" :class="msg.isMine ? 'bubble-mine' : 'bubble-other'">
+            <text class="msg-text">{{ msg.content }}</text>
+          </view>
+
+          <image
+            v-if="msg.isMine"
+            class="msg-avatar"
+            src="/static/default-avatar.png"
+            mode="aspectFill"
+          ></image>
         </view>
 
-        <image
-          v-if="msg.isMine"
-          class="msg-avatar"
-          src="/static/default-avatar.png"
-          mode="aspectFill"
-        ></image>
-      </view>
-
-      <view class="msg-end" v-if="messages.length === 0">
-        <text class="end-text">暂无消息，发送第一条问候吧</text>
+        <view class="msg-end" v-if="messages.length === 0">
+          <text class="end-text">暂无消息，发送第一条问候吧</text>
+        </view>
       </view>
     </scroll-view>
 
@@ -83,6 +96,8 @@ interface ChatMsg {
 const ws = useWebSocket();
 const statusBarHeight = uni.getSystemInfoSync().statusBarHeight || 20;
 const PAGE_SIZE = 20;
+const navBarHeight = 88;
+const anchorOffset = 16;
 
 const myId = ref(0);
 const userId = ref(0);
@@ -90,6 +105,7 @@ const nickname = ref('聊天');
 const itemId = ref(0);
 const itemTitle = ref('');
 const itemCover = ref('');
+const itemPrice = ref('');
 const otherAvatar = ref('');
 const messages = ref<ChatMsg[]>([]);
 const inputText = ref('');
@@ -101,6 +117,7 @@ const historyPage = ref(1);
 const noMoreHistory = ref(false);
 let msgIdCounter = 0;
 const loadedMsgKeys: Set<string> = new Set();
+const navAnchorTop = statusBarHeight + navBarHeight;
 
 const scrollToBottom = () => {
   nextTick(() => {
@@ -246,6 +263,13 @@ const goBack = () => {
   uni.navigateBack();
 };
 
+const goToDetail = () => {
+  if (!itemId.value) return;
+  uni.navigateTo({
+    url: `/pages/item/detail?id=${itemId.value}`
+  });
+};
+
 onLoad(async (options: any) => {
   const uid = Number(options.userId);
   if (!uid) {
@@ -258,6 +282,7 @@ onLoad(async (options: any) => {
   itemId.value = Number(options.itemId || 0);
   itemTitle.value = decodeURIComponent(options.itemTitle || '');
   itemCover.value = decodeURIComponent(options.itemCover || '');
+  itemPrice.value = decodeURIComponent(options.itemPrice || '');
   otherAvatar.value = itemCover.value || '/static/default-avatar.png';
   myId.value = conversationStore.getMyUserId();
   conversationStore.markRead(uid, itemId.value);
@@ -281,6 +306,7 @@ onUnload(() => {
 }
 
 .nav-bar {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -325,10 +351,78 @@ onUnload(() => {
   }
 }
 
+.context-anchor {
+  position: fixed;
+  left: 20rpx;
+  right: 20rpx;
+  height: 88rpx;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1rpx solid rgba(0, 0, 0, 0.05);
+  border-radius: 20rpx;
+  display: flex;
+  align-items: center;
+  padding: 0 18rpx;
+  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.06);
+  z-index: 9;
+}
+
+.anchor-cover {
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 12rpx;
+  background-color: #f0f0f0;
+  flex-shrink: 0;
+}
+
+.anchor-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  margin: 0 16rpx;
+}
+
+.anchor-title {
+  font-size: 24rpx;
+  color: #333;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.anchor-price {
+  margin-top: 4rpx;
+  font-size: 22rpx;
+  color: #ff4d4f;
+}
+
+.anchor-action {
+  flex-shrink: 0;
+  padding: 10rpx 18rpx;
+  background-color: rgba(7, 193, 96, 0.1);
+  border-radius: 999rpx;
+}
+
+.anchor-action-text {
+  font-size: 22rpx;
+  color: #07c160;
+  font-weight: 500;
+}
+
 .msg-list {
   flex: 1;
   padding: 20rpx 24rpx;
   overflow-y: auto;
+  box-sizing: border-box;
+}
+
+.msg-content {
+  min-height: 100%;
+}
+
+.msg-content.with-anchor {
+  margin-top: 160rpx !important;
 }
 
 .msg-item {

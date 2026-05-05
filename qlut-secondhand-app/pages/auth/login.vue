@@ -102,8 +102,7 @@ const handleSubmit = async () => {
       // 规范里登录可能只返回 token，这里保证本地一定有可用账号信息
       const mergedUserInfo = {
         ...(res.data.user || {}),
-        StudentID: res.data.user?.StudentID || res.data.user?.student_id || formData.studentId,
-        student_id: res.data.user?.student_id || res.data.user?.StudentID || formData.studentId
+        studentId: res.data.user?.studentId || formData.studentId
       };
       uni.setStorageSync('userInfo', mergedUserInfo);
       uni.setStorageSync('lastLoginAccount', formData.studentId);

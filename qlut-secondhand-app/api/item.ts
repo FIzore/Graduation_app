@@ -5,13 +5,19 @@ export type ItemStatus = 'OnSale' | 'Pending' | 'Completed';
 
 export interface Item {
   id: number;
-  publisher_id: number;
+  publisherId: number;
   title: string;
   content: string;
   price: number;
   images: string[];
   status: ItemStatus;
-  created_at?: string;
+  createdAt?: string;
+}
+
+export interface BehaviorPayload {
+  itemId?: number | null;
+  behaviorType: 'view' | 'favorite' | 'search';
+  searchQuery?: string;
 }
 
 /**
@@ -40,6 +46,13 @@ export const createItem = (data: { title: string; content: string; price: number
  */
 export const createAppointment = (itemId: number) => {
   return request('/appointments', 'POST', { itemId });
+};
+
+/**
+ * 批量上报行为埋点
+ */
+export const reportBehaviors = (behaviors: BehaviorPayload[]) => {
+  return request('/behaviors', 'POST', { behaviors });
 };
 
 /**

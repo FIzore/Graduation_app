@@ -1,11 +1,25 @@
 ﻿import { request } from '../utils/request';
 
+export interface LoginUser {
+  id?: number;
+  studentId?: string;
+}
+
+export interface LoginResponse {
+  token: string;
+  user?: LoginUser;
+}
+
+export interface PingResponse {
+  userId: number;
+}
+
 /**
  * 登录认证接口
  */
 export const login = (data: { studentId: string; password: string }) => {
   console.log('Sending Auth Params (Login):', data);
-  return request<{ token: string; user: any }>('/auth/login', 'POST', data);
+  return request<LoginResponse>('/auth/login', 'POST', data);
 };
 
 /**
@@ -21,4 +35,11 @@ export const register = (data: { studentId: string; password: string }) => {
  */
 export const bindWeChat = (code: string) => {
   return request('/auth/bind-wechat', 'POST', { code });
+};
+
+/**
+ * 鉴权探测接口
+ */
+export const ping = () => {
+  return request<PingResponse>('/user/ping', 'GET');
 };
