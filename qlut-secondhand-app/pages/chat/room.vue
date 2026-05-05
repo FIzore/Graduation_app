@@ -15,6 +15,9 @@
       :scroll-with-animation="true"
       @scrolltoupper="onScrollToUpper"
     >
+      <view class="loading-hint" v-if="loadingHistory">
+        <text>加载中...</text>
+      </view>
       <view class="msg-item" v-for="msg in messages" :key="msg.id" :class="msg.isMine ? 'msg-right' : 'msg-left'">
         <image
           v-if="!msg.isMine"
@@ -63,6 +66,7 @@ import { ref, nextTick } from 'vue';
 import { onLoad, onUnload } from '@dcloudio/uni-app';
 import { useWebSocket } from '../../utils/websocket';
 import { conversationStore } from '../../store/conversation';
+import { getChatHistory } from '../../api/chat';
 
 interface ChatMsg {
   id: number;
@@ -75,6 +79,7 @@ interface ChatMsg {
 
 const ws = useWebSocket();
 const statusBarHeight = uni.getSystemInfoSync().statusBarHeight || 20;
+const PAGE_SIZE = 20;
 
 const myId = ref(0);
 const userId = ref(0);
@@ -84,7 +89,12 @@ const messages = ref<ChatMsg[]>([]);
 const inputText = ref('');
 const keyboardHeight = ref(0);
 const scrollTop = ref(0);
+const loadingHistory = ref(false);
+
+const historyPage = ref(1);
+const noMoreHistory = ref(false);
 let msgIdCounter = 0;
+const loadedMsgKeys: Set<string> = new Set();
 
 const scrollToBottom = () => {
   nextTick(() => {
@@ -97,13 +107,80 @@ const pushMessage = (msg: Omit<ChatMsg, 'id'>) => {
   scrollToBottom();
 };
 
+const loadInitialHistory = async () => {
+  loadingHistory.value = true;
+  uni.showLoading({ title: '加载中...' });
+  try {
+    const res = await getChatHistory(userId.value, 1, PAGE_SIZE);
+    const msgs = (res.data as any)?.messages ?? (res.data as any)?.list ?? [];
+    const arr = Array.isArray(msgs) ? msgs.reverse() : [];
+    if (arr.length < PAGE_SIZE) noMoreHistory.value = true;
+    arr.forEach((m: any) => {
+      const key = [m.fromId ?? m.FromId, m.toId ?? m.ToId, m.content ?? m.Content, m.createdAt ?? m.CreatedAt].join('-');
+      loadedMsgKeys.add(key);
+      messages.value.push({
+        id: ++msgIdCounter,
+        fromId: Number(m.fromId ?? m.FromId ?? 0),
+        toId: Number(m.toId ?? m.ToId ?? 0),
+        content: (m.content ?? m.Content ?? '') as string,
+        createdAt: (m.createdAt ?? m.CreatedAt ?? '') as string,
+        isMine: (m.fromId ?? m.FromId) == myId.value,
+      });
+    });
+    scrollToBottom();
+  } catch (e) {
+    console.error('[chat] load history failed:', e);
+  } finally {
+    loadingHistory.value = false;
+    uni.hideLoading();
+  }
+};
+
+const loadMoreHistory = async () => {
+  if (loadingHistory.value || noMoreHistory.value) return;
+  loadingHistory.value = true;
+  try {
+    historyPage.value++;
+    const res = await getChatHistory(userId.value, historyPage.value, PAGE_SIZE);
+    const msgs = (res.data as any)?.messages ?? (res.data as any)?.list ?? [];
+    const arr = Array.isArray(msgs) ? msgs.reverse() : [];
+    if (arr.length === 0) {
+      noMoreHistory.value = true;
+      return;
+    }
+    const prepend: ChatMsg[] = [];
+    arr.forEach((m: any) => {
+      const key = [m.fromId ?? m.FromId, m.toId ?? m.ToId, m.content ?? m.Content, m.createdAt ?? m.CreatedAt].join('-');
+      if (loadedMsgKeys.has(key)) return;
+      loadedMsgKeys.add(key);
+      prepend.push({
+        id: ++msgIdCounter,
+        fromId: Number(m.fromId ?? m.FromId ?? 0),
+        toId: Number(m.toId ?? m.ToId ?? 0),
+        content: (m.content ?? m.Content ?? '') as string,
+        createdAt: (m.createdAt ?? m.CreatedAt ?? '') as string,
+        isMine: (m.fromId ?? m.FromId) == myId.value,
+      });
+    });
+    messages.value = [...prepend, ...messages.value];
+  } catch (e) {
+    historyPage.value--;
+    console.error('[chat] load more history failed:', e);
+  } finally {
+    loadingHistory.value = false;
+  }
+};
+
 const handleSocketMsg = (msg: any) => {
   const fromId = Number(msg.fromId ?? msg.FromId ?? 0);
   const toId = Number(msg.toId ?? msg.ToId ?? 0);
   const content = (msg.content ?? msg.Content ?? '') as string;
   const createdAt = (msg.createdAt ?? msg.CreatedAt ?? new Date().toISOString()) as string;
-
   if (!content) return;
+
+  const key = [fromId, toId, content, createdAt].join('-');
+  if (loadedMsgKeys.has(key)) return;
+  loadedMsgKeys.add(key);
 
   const isFromPeer = fromId === userId.value && toId === myId.value;
   const isFromMe = fromId === myId.value && toId === userId.value;
@@ -118,9 +195,7 @@ const handleSocketMsg = (msg: any) => {
 const handleSend = () => {
   const text = inputText.value.trim();
   if (!text) return;
-
   ws.send({ toId: userId.value, content: text });
-
   pushMessage({
     fromId: myId.value,
     toId: userId.value,
@@ -128,7 +203,6 @@ const handleSend = () => {
     createdAt: new Date().toISOString(),
     isMine: true,
   });
-
   inputText.value = '';
 };
 
@@ -144,26 +218,26 @@ const onInputBlur = () => {
 };
 
 const onScrollToUpper = () => {
-  // placeholder for v0.8.4 history loading
+  loadMoreHistory();
 };
 
 const goBack = () => {
   uni.navigateBack();
 };
 
-onLoad((options: any) => {
+onLoad(async (options: any) => {
   const uid = Number(options.userId);
   if (!uid) {
     uni.showToast({ title: '参数错误', icon: 'none' });
     setTimeout(() => uni.navigateBack(), 1000);
     return;
   }
-
   userId.value = uid;
   nickname.value = decodeURIComponent(options.nickname || '用户' + uid);
   myId.value = conversationStore.getMyUserId();
   conversationStore.markRead(uid);
 
+  await loadInitialHistory();
   ws.on('message', handleSocketMsg);
 });
 
@@ -269,6 +343,17 @@ onUnload(() => {
   .end-text {
     font-size: 26rpx;
     color: #ccc;
+  }
+}
+
+.loading-hint {
+  display: flex;
+  justify-content: center;
+  padding: 20rpx 0;
+
+  text {
+    font-size: 24rpx;
+    color: #999;
   }
 }
 

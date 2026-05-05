@@ -214,3 +214,13 @@ WebSocket 聊天室核心 UI 与实时收发完成：
 - **生命周期安全**：`onLoad` 注册 `ws.on('message', handleSocketMsg)`；`onUnload` 执行 `ws.off('message', handleSocketMsg)` + `markRead` 清零未读，杜绝内存泄漏与重复监听
 - **UI 规范**：`pages.json` 中 `message` 页面启用 `navigationStyle: custom`，消除原生与自定义双标题叠加
 - **紧急修复**：解决 `detail.vue` WXSS 编译错误 — 移除 Flex `gap` 属性（替换为相邻兄弟 `margin-left` 选择器）、将 `.chat-btn-text` 从 SCSS 嵌套中提取为扁平独立规则
+
+
+0.8.4
+WebSocket 历史消息缝合与细节打磨：
+
+- **API 层补齐**：新建 `api/chat.ts`，封装 `getChatHistory(targetId, page)` 对接 `GET /api/v1/chat/history`，参数 `target_id / page / page_size`，返回 camelCase 消息数组
+- **历史加载**：`room.vue` 在 `onLoad` 中先调用 HTTP API 拉取最近一页历史记录并渲染，完成后再注册 WS 监听器，实现「先历史 → 后实时」无缝拼接
+- **下拉翻页**：`@scrolltoupper` 触发 `loadMoreHistory`，递增 `historyPage` 加载更早记录，预置 `noMoreHistory` 终止标记
+- **去重校验**：维护 `loadedMsgKeys: Set<string>`（`fromId-toId-content-createdAt` 签名），WS 实时消息在 push 前校验签名是否已存在，消除历史/实时边界处的重复渲染
+- **会话列表打磨**：`message.vue` 时间格式化升级 — 今天显示 `HH:mm`、昨天显示 `昨天`、更早显示 `MM-DD`；排序保持 `lastTime` 倒序

@@ -63,12 +63,15 @@ const formatConvTime = (timeStr: string) => {
   const d = new Date(timeStr);
   if (Number.isNaN(d.getTime())) return timeStr;
   const now = new Date();
-  if (
-    d.getFullYear() === now.getFullYear() &&
-    d.getMonth() === now.getMonth() &&
-    d.getDate() === now.getDate()
-  ) {
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterday = new Date(today.getTime() - 86400000);
+  const msgDay = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+
+  if (msgDay.getTime() === today.getTime()) {
     return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  }
+  if (msgDay.getTime() === yesterday.getTime()) {
+    return '昨天';
   }
   return (d.getMonth() + 1) + '-' + d.getDate();
 };
