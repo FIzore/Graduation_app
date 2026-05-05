@@ -48,6 +48,20 @@
       <!-- 底部属性区 -->
       <view class="attribute-section">
         <uni-list :border="false">
+          <picker :range="categoryOptions" range-key="label" @change="handleCategoryChange">
+            <uni-list-item
+              title="分类"
+              show-extra-icon
+              :extra-icon="{ type: 'list', size: '20', color: '#07c160' }"
+              :border="false"
+            >
+              <template v-slot:footer>
+                <text class="category-value" :class="{ placeholder: !formData.category }">
+                  {{ categoryLabel || '请选择分类' }}
+                </text>
+              </template>
+            </uni-list-item>
+          </picker>
           <uni-list-item 
             title="价格" 
             show-extra-icon 
@@ -68,7 +82,7 @@
           </uni-list-item>
         </uni-list>
       </view>
-      
+
       <view class="safe-bottom"></view>
     </scroll-view>
 
@@ -81,12 +95,20 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue';
+import { computed, ref, reactive } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
 import { uploadImage, createItem } from '../../api/item';
 import { IMAGE_BASE_URL } from '../../config';
 
 const serverUrl = IMAGE_BASE_URL;
+
+const categoryOptions = [
+  { value: 'book', label: '图书' },
+  { value: 'digital', label: '电子产品' },
+  { value: 'daily', label: '生活用品' },
+  { value: 'sports', label: '体育器材' },
+  { value: 'other', label: '其他' }
+];
 
 onShow(() => {
   uni.hideTabBar();
@@ -97,7 +119,12 @@ const formData = reactive({
   title: '',
   content: '',
   price: '',
-  images: [] as string[]
+  images: [] as string[],
+  category: ''
+});
+
+const categoryLabel = computed(() => {
+  return categoryOptions.find((item) => item.value === formData.category)?.label || '';
 });
 
 const handleCancel = () => {
@@ -129,6 +156,14 @@ const removeImage = (index: number) => {
   formData.images.splice(index, 1);
 };
 
+const handleCategoryChange = (e: any) => {
+  const index = Number(e.detail.value);
+  const selected = categoryOptions[index];
+  if (selected) {
+    formData.category = selected.value;
+  }
+};
+
 const formatImageUrl = (path: string) => {
   if (!path) return '/static/default.png';
   return path.startsWith('http') ? path : serverUrl + path;
@@ -151,13 +186,18 @@ const handlePublish = async () => {
     return uni.showToast({ title: '请完善物品信息', icon: 'none' });
   }
 
+  if (!formData.category) {
+    return uni.showToast({ title: '请选择物品分类', icon: 'none' });
+  }
+
   isPublishing.value = true;
   try {
     const payload = {
       title: formData.title,
       content: formData.content,
       price: parseFloat(formData.price),
-      images: formData.images
+      images: formData.images,
+      category: formData.category
     };
     
     await createItem(payload);
@@ -326,6 +366,17 @@ const handlePublish = async () => {
       color: #ff4d4f;
       font-size: 32rpx;
       font-weight: bold;
+    }
+
+    .category-value {
+      color: #333;
+      font-size: 28rpx;
+      font-weight: 500;
+
+      &.placeholder {
+        color: #c0c4cc;
+        font-weight: normal;
+      }
     }
   }
 }

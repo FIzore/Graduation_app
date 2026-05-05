@@ -20,6 +20,14 @@ export interface BehaviorPayload {
   searchQuery?: string;
 }
 
+export interface CreateItemPayload {
+  title: string;
+  content: string;
+  price: number;
+  images: string[];
+  category: string;
+}
+
 /**
  * 分页获取物品列表
  */
@@ -37,7 +45,7 @@ export const getItemDetail = (id: number) => {
 /**
  * 发布闲置物品
  */
-export const createItem = (data: { title: string; content: string; price: number; images: string[] }) => {
+export const createItem = (data: CreateItemPayload) => {
   return request('/items', 'POST', data);
 };
 

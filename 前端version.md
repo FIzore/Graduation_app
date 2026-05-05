@@ -245,3 +245,11 @@ WebSocket 历史消息缝合与细节打磨：
 - **IM 增强**：`pages/chat/room.vue` 顶部实装商品上下文锚点卡片，动态展示 `itemCover / itemTitle / itemPrice`，提供“查看详情”回跳入口；通过 `msg-content.with-anchor { margin-top: 160rpx !important; }` 深度修复 fixed 锚点对首条消息、未读气泡的遮挡问题
 - **行为埋点**：`api/item.ts` 新增 `reportBehaviors()`，详情页加载成功后静默上报 `view` 行为；同时增加本地 `token` 守卫，未登录用户不再触发 `/behaviors` 请求，修复了 401 全局重定向导致的详情页误跳登录 Bug
 - **工程化**：`utils/request.ts` 引入结构化 `RequestError`，统一封装 `code / msg` 错误上下文，提升后续登录、风控、限流等错误分支的可维护性
+
+
+0.9.4
+发布端分类能力实装：
+
+- **发布增强**：`pages/item/post.vue` 增加物品分类选择能力，支持图书、电子产品、生活用品、体育器材、其他 5 大核心预设分类
+- **契约对齐**：`api/item.ts` 为 `createItem` 补齐 `CreateItemPayload`，发布上行链路正式携带 camelCase 的 `category` 字段与后端 v0.24 对齐
+- **表单校验**：发布前新增分类必选拦截，用户未选择分类时明确提示“请选择物品分类”，防止产生无分类物品数据
