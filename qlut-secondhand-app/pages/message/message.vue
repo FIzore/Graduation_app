@@ -60,7 +60,7 @@ const sortedList = computed(() => {
 
 const formatConvTime = (timeStr: string) => {
   if (!timeStr) return '';
-  const d = new Date(timeStr);
+  const d = new Date(timeStr.replace(/-/g, '/'));
   if (Number.isNaN(d.getTime())) return timeStr;
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
