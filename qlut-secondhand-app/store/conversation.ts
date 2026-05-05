@@ -2,6 +2,9 @@ import { reactive } from 'vue';
 
 export interface Conversation {
   userId: number;
+  itemId: number;
+  itemTitle: string;
+  itemCover: string;
   nickname: string;
   avatar: string;
   lastMsg: string;
@@ -10,10 +13,10 @@ export interface Conversation {
 }
 
 interface ConversationStore {
-  conversations: Record<number, Conversation>;
+  conversations: Record<string, Conversation>;
   unreadTotal: number;
   updateConversation(msg: any): void;
-  markRead(userId: number): void;
+  markRead(otherUserId: number, itemId: number): void;
   getMyUserId(): number;
 }
 
@@ -50,6 +53,10 @@ function getMyUserId(): number {
   }
 }
 
+function getConvKey(otherId: number, iid: number): string {
+  return `${otherId}_${iid}`;
+}
+
 export const conversationStore = reactive<ConversationStore>({
   conversations: {},
 
@@ -62,14 +69,16 @@ export const conversationStore = reactive<ConversationStore>({
     const fromId = Number(msg.fromId ?? msg.FromId ?? 0);
     const toId = Number(msg.toId ?? msg.ToId ?? 0);
     const content = (msg.content ?? msg.Content ?? '') as string;
+    const iid = Number(msg.itemId ?? msg.ItemId ?? 0);
 
-    if (fromId === 0) return;
+    if (fromId === 0 || iid === 0) return;
 
     const otherId = fromId === myId ? toId : fromId;
     if (otherId === 0) return;
 
     const isIncoming = fromId !== myId;
-    const existing = this.conversations[otherId];
+    const key = getConvKey(otherId, iid);
+    const existing = this.conversations[key];
 
     if (existing) {
       existing.lastMsg = content;
@@ -78,8 +87,11 @@ export const conversationStore = reactive<ConversationStore>({
         existing.unreadCount += 1;
       }
     } else {
-      this.conversations[otherId] = {
+      this.conversations[key] = {
         userId: otherId,
+        itemId: iid,
+        itemTitle: (msg.itemTitle as string) || (msg.ItemTitle as string) || '',
+        itemCover: (msg.itemCover as string) || (msg.ItemCover as string) || '',
         nickname: (msg.nickname as string) || `用户${otherId}`,
         avatar: (msg.avatar as string) || '',
         lastMsg: content,
@@ -89,9 +101,10 @@ export const conversationStore = reactive<ConversationStore>({
     }
   },
 
-  markRead(userId: number) {
-    if (this.conversations[userId]) {
-      this.conversations[userId].unreadCount = 0;
+  markRead(otherUserId: number, itemId: number) {
+    const key = getConvKey(otherUserId, itemId);
+    if (this.conversations[key]) {
+      this.conversations[key].unreadCount = 0;
     }
   },
 

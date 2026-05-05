@@ -17,7 +17,7 @@ export interface Item {
 /**
  * 分页获取物品列表
  */
-export const getItems = (params: { page: number; pageSize: number; status?: ItemStatus }) => {
+export const getItems = (params: { page: number; pageSize: number; status?: ItemStatus; keyword?: string }) => {
   return request<{ items: Item[]; total: number }>('/items', 'GET', params);
 };
 
@@ -39,7 +39,7 @@ export const createItem = (data: { title: string; content: string; price: number
  * 发起预约交接
  */
 export const createAppointment = (itemId: number) => {
-  return request('/appointments', 'POST', { item_id: itemId });
+  return request('/appointments', 'POST', { itemId });
 };
 
 /**

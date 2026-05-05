@@ -154,7 +154,7 @@ const loadPublishedItems = async () => {
     const allItems = extractItems(itemsRes.data);
 
     publishedItems.value = allItems.filter((item: any) => {
-      const isMine = String(item.PublisherID || item.publisher_id) === currentUserId;
+      const isMine = String(item.PublisherID || item.publisherId || item.publisher_id) === currentUserId;
       return isMine;
     });
   } catch (e) {

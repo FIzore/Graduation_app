@@ -1,7 +1,8 @@
 ﻿<template>
   <view class="container">
     <!-- 顶部搜索栏 -->
-    <view class="search-bar">
+    <view class="search-bar" @click="goToSearch">
+      <uni-icons type="search" size="18" color="#999"></uni-icons>
       <text class="search-text">搜索自己想要的闲置物品...</text>
     </view>
     
@@ -127,6 +128,12 @@ const goToDetail = (id: number) => {
   });
 };
 
+const goToSearch = () => {
+  uni.navigateTo({
+    url: '/pages/search/search'
+  });
+};
+
 // 解析图片地址：兼容 string[] / JSON 字符串 / 相对路径
 const getCoverImage = (imagesStr: any) => {
   if (!imagesStr) return '/static/default.png';
@@ -166,7 +173,7 @@ onShow(() => {
 });
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
 .container {
   display: flex;
   flex-direction: column;
@@ -175,17 +182,23 @@ onShow(() => {
 }
 
 .search-bar {
-  padding: 20rpx;
+  padding: 20rpx 30rpx;
   background-color: #ffffff;
   margin: 20rpx;
   border-radius: 40rpx;
-  text-align: center;
+  display: flex;
+  align-items: center;
   box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.02);
+
+  &:active {
+    background-color: #f5f5f5;
+  }
 }
 
 .search-text {
   color: #999;
-  font-size: 28rpx;
+  font-size: 26rpx;
+  margin-left: 12rpx;
 }
 
 .waterfall {

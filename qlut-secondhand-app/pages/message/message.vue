@@ -8,13 +8,13 @@
       <view
         class="conv-item"
         v-for="conv in sortedList"
-        :key="conv.userId"
+        :key="conv.userId + '_' + conv.itemId"
         @click="goToChat(conv)"
       >
         <view class="avatar-box">
           <image
             class="avatar"
-            :src="conv.avatar || '/static/default-avatar.png'"
+            :src="conv.itemCover || conv.avatar || '/static/default-avatar.png'"
             mode="aspectFill"
           ></image>
           <view class="badge" v-if="conv.unreadCount > 0">
@@ -27,6 +27,9 @@
           <view class="conv-top">
             <text class="nickname">{{ conv.nickname || '用户' + conv.userId }}</text>
             <text class="time">{{ formatConvTime(conv.lastTime) }}</text>
+          </view>
+          <view class="conv-mid" v-if="conv.itemTitle">
+            <text class="item-tag">{{ conv.itemTitle }}</text>
           </view>
           <view class="conv-bottom">
             <text class="last-msg">{{ conv.lastMsg }}</text>
@@ -76,10 +79,14 @@ const formatConvTime = (timeStr: string) => {
   return (d.getMonth() + 1) + '-' + d.getDate();
 };
 
-const goToChat = (conv: { userId: number; nickname: string }) => {
-  store.markRead(conv.userId);
+const goToChat = (conv: { userId: number; nickname: string; itemId: number; itemTitle: string; itemCover: string }) => {
+  store.markRead(conv.userId, conv.itemId);
   uni.navigateTo({
-    url: '/pages/chat/room?userId=' + conv.userId + '&nickname=' + encodeURIComponent(conv.nickname)
+    url: '/pages/chat/room?userId=' + conv.userId
+      + '&nickname=' + encodeURIComponent(conv.nickname)
+      + '&itemId=' + conv.itemId
+      + '&itemTitle=' + encodeURIComponent(conv.itemTitle || '')
+      + '&itemCover=' + encodeURIComponent(conv.itemCover || '')
   });
 };
 
@@ -194,6 +201,18 @@ onShow(() => {
       -webkit-box-orient: vertical;
       -webkit-line-clamp: 1;
       overflow: hidden;
+    }
+  }
+
+  .conv-mid {
+    margin-top: 6rpx;
+
+    .item-tag {
+      font-size: 22rpx;
+      color: #07c160;
+      background-color: rgba(7, 193, 96, 0.08);
+      padding: 2rpx 10rpx;
+      border-radius: 4rpx;
     }
   }
 }

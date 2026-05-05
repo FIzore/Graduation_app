@@ -3,7 +3,7 @@
 /**
  * 登录认证接口
  */
-export const login = (data: { student_id: string; password: string }) => {
+export const login = (data: { studentId: string; password: string }) => {
   console.log('Sending Auth Params (Login):', data);
   return request<{ token: string; user: any }>('/auth/login', 'POST', data);
 };
@@ -11,7 +11,7 @@ export const login = (data: { student_id: string; password: string }) => {
 /**
  * 用户注册接口
  */
-export const register = (data: { student_id: string; password: string }) => {
+export const register = (data: { studentId: string; password: string }) => {
   console.log('Sending Auth Params (Register):', data);
   return request('/auth/register', 'POST', data);
 };

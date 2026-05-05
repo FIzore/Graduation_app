@@ -17,7 +17,7 @@
           <uni-icons type="person" size="20" color="#999"></uni-icons>
           <input
             type="text"
-            v-model="formData.student_id"
+            v-model="formData.studentId"
             placeholder="请输入学号（10-12位）"
             placeholder-class="placeholder"
           />
@@ -81,12 +81,12 @@ const showPassword = ref(false);
 const agreed = ref(false);
 
 const formData = reactive({
-  student_id: '',
+  studentId: '',
   password: ''
 });
 
 const handleSubmit = async () => {
-  if (!formData.student_id || !formData.password) {
+  if (!formData.studentId || !formData.password) {
     return uni.showToast({ title: '请填写完整信息', icon: 'none' });
   }
 
@@ -102,11 +102,11 @@ const handleSubmit = async () => {
       // 规范里登录可能只返回 token，这里保证本地一定有可用账号信息
       const mergedUserInfo = {
         ...(res.data.user || {}),
-        StudentID: res.data.user?.StudentID || res.data.user?.student_id || formData.student_id,
-        student_id: res.data.user?.student_id || res.data.user?.StudentID || formData.student_id
+        StudentID: res.data.user?.StudentID || res.data.user?.student_id || formData.studentId,
+        student_id: res.data.user?.student_id || res.data.user?.StudentID || formData.studentId
       };
       uni.setStorageSync('userInfo', mergedUserInfo);
-      uni.setStorageSync('lastLoginAccount', formData.student_id);
+      uni.setStorageSync('lastLoginAccount', formData.studentId);
 
       uni.showToast({ title: '欢迎回来', icon: 'success' });
       uni.$emit('loginSuccess');

@@ -35,6 +35,13 @@
 			}
 		},
 		{
+			"path": "pages/search/search",
+			"style": {
+				"navigationBarTitleText": "搜索",
+				"navigationStyle": "custom"
+			}
+		},
+		{
 			"path": "pages/chat/room",
 			"style": {
 				"navigationBarTitleText": "聊天",

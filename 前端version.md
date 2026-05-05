@@ -224,3 +224,15 @@ WebSocket 历史消息缝合与细节打磨：
 - **下拉翻页**：`@scrolltoupper` 触发 `loadMoreHistory`，递增 `historyPage` 加载更早记录，预置 `noMoreHistory` 终止标记
 - **去重校验**：维护 `loadedMsgKeys: Set<string>`（`fromId-toId-content-createdAt` 签名），WS 实时消息在 push 前校验签名是否已存在，消除历史/实时边界处的重复渲染
 - **会话列表打磨**：`message.vue` 时间格式化升级 — 今天显示 `HH:mm`、昨天显示 `昨天`、更早显示 `MM-DD`；排序保持 `lastTime` 倒序
+
+
+0.9.2
+搜索功能闭环与安全区适配：
+
+- **首页入口**：`index.vue` 搜索栏绑定点击跳转至 `/pages/search/search`，增加搜索图标
+- **搜索专属页**：新建 `pages/search/search.vue`（387 行），包含历史搜索标签（最多 10 条、去重 + unshift 提升）、搜索结果双列瀑布流、触底加载更多、空状态提示
+- **API 层扩展**：`getItems` 新增 `keyword` 参数，透传至 `GET /api/v1/items?keyword=xxx`
+- **安全区适配**：通过 `getMenuButtonBoundingClientRect` 动态计算胶囊按钮位置，nav-bar 设置 `paddingRight` + `paddingTop` 避免搜索按钮与原生胶囊重叠
+- **交互打磨**：空搜索拦截、`confirm-type="search"` 键盘搜索、新搜索时自动重置页码与列表
+- **契约对齐**：`api/item.ts` 的 `createAppointment` 参数 `item_id` → `itemId`；`getChatHistory` 参数 `target_id/page_size` → `targetId/pageSize`；ChatHistoryResponse 响应结构匹配后端直接数组格式
+- **一物一聊架构**：`conversationStore` 密钥改为 `${otherId}_${itemId}` 组合键，Conversation 新增 `itemId/itemTitle/itemCover`，聊天室发送时主动回写 sender 侧会话列表，消息列表展示物品标签

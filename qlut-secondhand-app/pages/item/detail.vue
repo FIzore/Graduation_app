@@ -174,8 +174,11 @@ const goToChat = () => {
   const pid = publisherId.value;
   const nick = publisherNickname.value;
   if (!pid) return;
+  const iid = itemId.value;
+  const iTitle = itemTitle.value;
+  const iCover = formattedImages.value[0] || '';
   uni.navigateTo({
-    url: `/pages/chat/room?userId=${pid}&nickname=${encodeURIComponent(nick)}`
+    url: `/pages/chat/room?userId=${pid}&nickname=${encodeURIComponent(nick)}&itemId=${iid}&itemTitle=${encodeURIComponent(iTitle)}&itemCover=${encodeURIComponent(iCover)}`
   });
 };
 

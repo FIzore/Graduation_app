@@ -4,7 +4,10 @@
       <view class="nav-back" @click="goBack">
         <uni-icons type="back" size="22" color="#333"></uni-icons>
       </view>
-      <text class="nav-title">{{ nickname }}</text>
+      <view class="nav-center">
+        <text class="nav-title">{{ nickname }}</text>
+        <text class="nav-sub" v-if="itemTitle">{{ itemTitle }}</text>
+      </view>
       <view class="nav-placeholder"></view>
     </view>
 
@@ -84,6 +87,9 @@ const PAGE_SIZE = 20;
 const myId = ref(0);
 const userId = ref(0);
 const nickname = ref('聊天');
+const itemId = ref(0);
+const itemTitle = ref('');
+const itemCover = ref('');
 const otherAvatar = ref('');
 const messages = ref<ChatMsg[]>([]);
 const inputText = ref('');
@@ -111,8 +117,9 @@ const loadInitialHistory = async () => {
   loadingHistory.value = true;
   uni.showLoading({ title: '加载中...' });
   try {
-    const res = await getChatHistory(userId.value, 1, PAGE_SIZE);
-    const msgs = (res.data as any)?.messages ?? (res.data as any)?.list ?? [];
+    const res = await getChatHistory(userId.value, 1, PAGE_SIZE, itemId.value || undefined);
+    const data = res.data;
+    const msgs = Array.isArray(data) ? data : (data as any)?.messages ?? (data as any)?.list ?? [];
     const arr = Array.isArray(msgs) ? msgs.reverse() : [];
     if (arr.length < PAGE_SIZE) noMoreHistory.value = true;
     arr.forEach((m: any) => {
@@ -141,8 +148,9 @@ const loadMoreHistory = async () => {
   loadingHistory.value = true;
   try {
     historyPage.value++;
-    const res = await getChatHistory(userId.value, historyPage.value, PAGE_SIZE);
-    const msgs = (res.data as any)?.messages ?? (res.data as any)?.list ?? [];
+    const res = await getChatHistory(userId.value, historyPage.value, PAGE_SIZE, itemId.value || undefined);
+    const data = res.data;
+    const msgs = Array.isArray(data) ? data : (data as any)?.messages ?? (data as any)?.list ?? [];
     const arr = Array.isArray(msgs) ? msgs.reverse() : [];
     if (arr.length === 0) {
       noMoreHistory.value = true;
@@ -195,13 +203,26 @@ const handleSocketMsg = (msg: any) => {
 const handleSend = () => {
   const text = inputText.value.trim();
   if (!text) return;
-  ws.send({ toId: userId.value, content: text });
+  const payload: Record<string, unknown> = { toId: userId.value, content: text };
+  if (itemId.value) payload.itemId = itemId.value;
+  ws.send(payload);
+  const now = new Date().toISOString();
   pushMessage({
     fromId: myId.value,
     toId: userId.value,
     content: text,
-    createdAt: new Date().toISOString(),
+    createdAt: now,
     isMine: true,
+  });
+  conversationStore.updateConversation({
+    fromId: myId.value,
+    toId: userId.value,
+    content: text,
+    createdAt: now,
+    itemId: itemId.value,
+    nickname: nickname.value,
+    itemTitle: itemTitle.value,
+    itemCover: itemCover.value,
   });
   inputText.value = '';
 };
@@ -234,8 +255,12 @@ onLoad(async (options: any) => {
   }
   userId.value = uid;
   nickname.value = decodeURIComponent(options.nickname || '用户' + uid);
+  itemId.value = Number(options.itemId || 0);
+  itemTitle.value = decodeURIComponent(options.itemTitle || '');
+  itemCover.value = decodeURIComponent(options.itemCover || '');
+  otherAvatar.value = itemCover.value || '/static/default-avatar.png';
   myId.value = conversationStore.getMyUserId();
-  conversationStore.markRead(uid);
+  conversationStore.markRead(uid, itemId.value);
 
   await loadInitialHistory();
   ws.on('message', handleSocketMsg);
@@ -243,7 +268,7 @@ onLoad(async (options: any) => {
 
 onUnload(() => {
   ws.off('message', handleSocketMsg);
-  conversationStore.markRead(userId.value);
+  conversationStore.markRead(userId.value, itemId.value);
 });
 </script>
 
@@ -272,10 +297,27 @@ onUnload(() => {
     justify-content: center;
   }
 
+  .nav-center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow: hidden;
+  }
+
   .nav-title {
     font-size: 32rpx;
     font-weight: bold;
     color: #333;
+  }
+
+  .nav-sub {
+    font-size: 22rpx;
+    color: #999;
+    margin-top: 2rpx;
+    max-width: 400rpx;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .nav-placeholder {
