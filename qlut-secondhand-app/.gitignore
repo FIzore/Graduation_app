@@ -1,9 +1,15 @@
+# === 编译产物 ===
 node_modules/
 .hbuilderx/
 unpackage/
 dist/
 dev/
-.DS_Store
 
-# AI Agent Metadata
+# === 系统垃圾 ===
+.DS_Store
+Thumbs.db
+
+# === AI Agent Metadata ===
 .kilo/
+# 建议补一行，防止有些插件在子目录下产生类似文件夹
+**/.kilo/

@@ -32,14 +32,21 @@
 
     <view class="bottom-bar">
       <view class="action-btn-group">
-        <button v-if="itemStatus === 'OnSale'" class="reserve-btn" @click="onReserve" :loading="reserving">
+        <button v-if="!isSelf" class="chat-btn" @click="goToChat">
+          <uni-icons type="chat" size="22" color="#fff"></uni-icons>
+          <text class="chat-btn-text">私聊卖家</text>
+        </button>
+        <button v-if="!isSelf && itemStatus === 'OnSale'" class="reserve-btn" @click="onReserve" :loading="reserving">
           立即发起预约
         </button>
-        <button v-else-if="itemStatus === 'Pending'" class="pending-btn" disabled>
+        <button v-else-if="!isSelf && itemStatus === 'Pending'" class="pending-btn" disabled>
           预约交接中...
         </button>
-        <button v-else class="completed-btn" disabled>
+        <button v-else-if="!isSelf" class="completed-btn" disabled>
           物品已交接完成
+        </button>
+        <button v-else class="pending-btn" disabled>
+          这是您发布的物品
         </button>
       </view>
     </view>
@@ -55,6 +62,7 @@ import { ref, computed } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
 import { getItemDetail, createAppointment } from '../../api/item';
 import { IMAGE_BASE_URL } from '../../config';
+import { conversationStore } from '../../store/conversation';
 
 const item = ref<any | null>(null);
 const reserving = ref(false);
@@ -91,6 +99,14 @@ const itemPrice = computed(() => item.value?.Price ?? item.value?.price ?? '0.00
 const itemStatus = computed(() => item.value?.Status || item.value?.status || 'OnSale');
 const itemContent = computed(() => item.value?.Content || item.value?.content || '暂无详细描述');
 const itemTime = computed(() => item.value?.CreatedAt || item.value?.created_at || new Date());
+
+const publisherId = computed(() => item.value?.PublisherID ?? item.value?.publisher_id ?? item.value?.publisherId ?? 0);
+const publisherNickname = computed(() => item.value?.Nickname ?? item.value?.nickname ?? '卖家');
+
+const isSelf = computed(() => {
+  const myId = conversationStore.getMyUserId();
+  return myId > 0 && myId === Number(publisherId.value);
+});
 
 const formattedImages = computed(() => {
   const raw = item.value?.Images ?? item.value?.images;
@@ -152,6 +168,15 @@ const handleReserve = async () => {
   } finally {
     reserving.value = false;
   }
+};
+
+const goToChat = () => {
+  const pid = publisherId.value;
+  const nick = publisherNickname.value;
+  if (!pid) return;
+  uni.navigateTo({
+    url: `/pages/chat/room?userId=${pid}&nickname=${encodeURIComponent(nick)}`
+  });
 };
 
 const previewImage = (current: number) => {
@@ -291,6 +316,11 @@ const formatTime = (time: any) => {
 
 .action-btn-group {
   flex: 1;
+  display: flex;
+}
+
+.action-btn-group > button + button {
+  margin-left: 20rpx;
 }
 
 .reserve-btn {
@@ -299,6 +329,23 @@ const formatTime = (time: any) => {
   border-radius: 50rpx;
   font-size: 32rpx;
   border: none;
+  flex: 1;
+}
+
+.chat-btn {
+  background: #07c160;
+  color: #fff;
+  border-radius: 50rpx;
+  font-size: 28rpx;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 30rpx;
+}
+
+.chat-btn-text {
+  margin-left: 8rpx;
 }
 
 .pending-btn,

@@ -1,3 +1,4 @@
+
 # 0.1 version
 
 初始化后端骨架并完成数据库 AutoMigrate
@@ -123,8 +124,6 @@ WebSocket 实时私聊系统已开发文字互聊功能
    - **`/api/v1/appointments` (预约接口)**：针对恶意锁单行为，设置了 24 小时/20 次的长周期监测。
 3. **内容安全防火墙**：在 `item_service` 业务逻辑的最前端，植入了关键词扫描过滤矩阵，对“刷单、贷款、代写”等校园敏感词实时拦截，实现了“连接级”与“内容级”的双重风控。
 
-
-
 # 0.20
 
 至此，Go 后端部分的“最后一块拼图”——**生产级保障与优雅启停**已全部安装完毕。
@@ -147,20 +146,40 @@ WebSocket 引擎加固：sync.Map 重构客户端管理；readPump/writePump 添
 
 统一模型数据契约：user/item/appointment/message 全部添加 camelCase JSON 标签；Password 加 json:"-"；profile_handler 同步字段名。
 
+# 0.24
+
+物品分类系统：Item 模型新增 Category 字段，支持按分类筛选
+
+### 🛠️ 实现内容摘要
+
+- **Model 扩展**: `internal/model/item.go` 中 Item 新增 `Category` 字段（`varchar(64)`, `json:"category"`），AutoMigrate 自动建列。
+- **写路径打通**: 发布/编辑接口（PublishRequest → PublishDTO → Item）全链路透传 category 值。
+- **读路径筛选**: `GET /api/v1/items?category=book` 支持按分类过滤，与已有 status 过滤兼容组合使用。
+- **种子数据**: 测试物品附带 `"category": "book"`，便于前端联调。
+
+# 0.25
+
+用户行为埋点系统：支持前端异步批量上报浏览/收藏/搜索行为，并增加后端自动埋点
+
+### 🛠️ 实现内容摘要
+
+- **新模型 UserBehavior**: 记录用户ID、物品ID（可空）、行为类型、搜索词。为 Python AI 推荐算法提供数据基础。
+- **批量上报 API**: `POST /api/v1/behaviors` 接收 `behaviors` 数组，前端可积攒多条行为后一次性上报，减少请求频率。
+- **后端自动埋点**: 在 `GetItemDetail` 中异步写入 `view` 行为记录，仅对已登录用户生效，防止前端漏报，提高 NCF 算法数据质量。
+- **数据库设计**: `user_behaviors` 表，`userId`/`itemId`/`behaviorType` 均建索引，支持后续 OLAP 分析查询。
+
+# 0.26
+
+安全机制升级：Token黑名单登出 + 登录防暴力破解限流
+
+### 🛠️ 实现内容摘要
+
+- **Token 黑名单登出**: `POST /api/v1/auth/logout` 将当前 JWT 存入 Redis `blacklist:token:*`，TTL 精确设置为 Token 剩余有效期。JWT 中间件在校验时同步查询黑名单，已登出 Token 立即失效。
+- **Redis 故障容错**: 若 Redis 黑名单写入失败，仅记录 Warn 日志，不阻塞用户登出流程，确保服务降级可用。
+- **登录防爆破限流**: 同一学号 15 分钟内连续密码错误 5 次，触发 `lock:login:*` Redis 锁，锁定账号登录 15 分钟。正确登录取消锁定。
+- **辅助方法**: `jwtx.ParseTokenWithExpiry` 解析 Token 同时返回剩余秒数；`redisx.SetWithExpire` / `redisx.Exists` 简化 Redis 操作。
 
 todo
-
-### 一、 核心业务模型与底层的缺漏 (Go 后端待补)
-
-1. **最大的盲点：物品分类系统 (Category)**
-   * **现状：** 回头看一眼目前的 `Item` 模型，它只有标题、描述、价格、图片和状态。 **缺少了分类字段** （比如“数码产品”、“考研教材”、“生活用品”）。
-   * **影响：** 没有分类字段，前端没法做 Tab 切换筛选，后续 Python 侧的 CNN 图片智能识别也没法把分类结果存进数据库。
-2. **用户行为埋点收集 (Behavior Tracking)**
-   * **现状：** 目前没有任何表和接口去接收用户的“点击浏览”、“收藏”或“搜索词”记录。
-   * **影响：** 这是 NCF 神经协同过滤推荐算法的“燃料”。没有这些细粒度的历史交互数据，后期的 AI 算法将面临无米之炊，无法训练出千人千面的模型。
-3. **登出与安全机制 (Logout & Security)**
-   * **现状：** JWT 签发后是无状态的，目前缺失基于 Redis 黑名单的 Token 吊销机制。
-   * **影响：** 如果用户在设备上点击“退出登录”，旧的 Token 在过期前如果在网络上被截获，依然可以访问私有接口。此外，防刷验证码（如登录失败限流控制）也还未实现。
 
 ### 二、 运营后台与数据治理 (全栈待补)
 
