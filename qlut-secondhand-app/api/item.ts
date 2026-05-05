@@ -28,10 +28,18 @@ export interface CreateItemPayload {
   category: string;
 }
 
+export interface GetItemsParams {
+  page: number;
+  pageSize: number;
+  status?: ItemStatus;
+  keyword?: string;
+  category?: string;
+}
+
 /**
  * 分页获取物品列表
  */
-export const getItems = (params: { page: number; pageSize: number; status?: ItemStatus; keyword?: string }) => {
+export const getItems = (params: GetItemsParams) => {
   return request<{ items: Item[]; total: number }>('/items', 'GET', params);
 };
 

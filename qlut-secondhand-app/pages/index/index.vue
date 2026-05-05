@@ -5,35 +5,71 @@
       <uni-icons type="search" size="18" color="#999"></uni-icons>
       <text class="search-text">搜索自己想要的闲置物品...</text>
     </view>
-    
-    <!-- 物品瀑布流 -->
-    <scroll-view 
-      scroll-y 
-      class="waterfall" 
-      @scrolltolower="loadMore"
-      refresher-enabled
-      :refresher-triggered="isRefresherTriggered"
-      @refresherrefresh="onRefresh"
+
+    <scroll-view
+      class="category-tabs"
+      scroll-x
+      enhanced
+      :show-scrollbar="false"
+      :scroll-into-view="'tab-' + (activeCategory || 'all')"
     >
-      <view class="grid">
-        <view 
-          class="item-card" 
-          v-for="item in items" 
-          :key="item.id || (item as any).ID" 
-          @click="goToDetail(item.id || (item as any).ID)"
+      <view class="tab-row">
+        <view
+          v-for="item in categoryTabs"
+          :key="item.key"
+          :id="'tab-' + item.key"
+          class="tab-item"
+          :class="{ active: activeCategory === item.key }"
+          @click="selectCategory(item.key)"
         >
-          <!-- 图片展示：兼容相对路径与外部链接 -->
-          <image :src="getCoverImage(item.images || (item as any).Images)" mode="aspectFill" class="item-img" />
-          
-          <!-- 信息展示：兼容大小写字段 -->
-          <view class="item-info">
-            <text class="item-title">{{ item.title || (item as any).Title || '未命名物品' }}</text>
-            <text class="item-price">¥{{ item.price || (item as any).Price || '0.00' }}</text>
-            <text class="item-status" v-if="item.status === 'Pending' || (item as any).Status === 'Pending'">预约交接中</text>
-          </view>
+          <text class="tab-text">{{ item.label }}</text>
+          <view class="tab-underline"></view>
         </view>
       </view>
     </scroll-view>
+    
+    <view class="waterfall-shell">
+      <!-- 物品瀑布流 -->
+      <scroll-view 
+        scroll-y 
+        class="waterfall" 
+        @scrolltolower="loadMore"
+        refresher-enabled
+        :refresher-triggered="isRefresherTriggered"
+        @refresherrefresh="onRefresh"
+      >
+        <view class="grid">
+          <view 
+            class="item-card" 
+            v-for="item in items" 
+            :key="item.id || (item as any).ID" 
+            @click="goToDetail(item.id || (item as any).ID)"
+          >
+            <!-- 图片展示：兼容相对路径与外部链接 -->
+            <image :src="getCoverImage(item.images || (item as any).Images)" mode="aspectFill" class="item-img" />
+            
+            <!-- 信息展示：兼容大小写字段 -->
+            <view class="item-info">
+              <text class="item-title">{{ item.title || (item as any).Title || '未命名物品' }}</text>
+              <text class="item-price">¥{{ item.price || (item as any).Price || '0.00' }}</text>
+              <text class="item-status" v-if="item.status === 'Pending' || (item as any).Status === 'Pending'">预约交接中</text>
+            </view>
+          </view>
+        </view>
+      </scroll-view>
+
+      <view class="loading-mask" v-if="isCategoryLoading">
+        <view class="loading-card">
+          <uni-icons type="spinner-cycle" size="28" color="#07c160"></uni-icons>
+          <text>正在切换分类...</text>
+        </view>
+      </view>
+
+      <view class="empty-state" v-if="hasLoadedOnce && !loading && !isCategoryLoading && items.length === 0">
+        <image src="/static/empty.png" mode="aspectFit" class="empty-img" />
+        <text class="empty-text">暂无相关宝贝</text>
+      </view>
+    </view>
     <!-- TabBar 放在 scroll-view 外，确保 fixed 生效 -->
     <custom-tabbar active="index" :unread-count="conversationStore.unreadTotal" />
   </view>
@@ -54,18 +90,38 @@ const size = ref(10);
 const loading = ref(false);
 const noMore = ref(false);
 const isRefresherTriggered = ref(false);
+const isCategoryLoading = ref(false);
+const activeCategory = ref('all');
+const hasLoadedOnce = ref(false);
+
+const categoryTabs = [
+  { key: 'all', label: '全部' },
+  { key: 'book', label: '图书' },
+  { key: 'digital', label: '电子产品' },
+  { key: 'daily', label: '生活用品' },
+  { key: 'sports', label: '体育器材' },
+  { key: 'other', label: '其他' }
+];
 
 // 拉取列表数据（API + Mock 回退）
-const fetchItems = async (isRefresh = false) => {
+const fetchItems = async (isRefresh = false, showCategoryLoading = false) => {
   if (loading.value || (noMore.value && !isRefresh)) return;
   
   loading.value = true;
+  if (showCategoryLoading) {
+    isCategoryLoading.value = true;
+  }
   try {
     // 状态 OnSale 代表在售
-    const res = await getItems({ page: page.value, pageSize: size.value, status: 'OnSale' });
+    const res = await getItems({
+      page: page.value,
+      pageSize: size.value,
+      status: 'OnSale',
+      category: activeCategory.value === 'all' ? '' : activeCategory.value
+    });
     
     // 兼容不同返回结构
-    let newItems = [];
+    let newItems: any[] = [];
     const responseData = res.data as any;
     if (Array.isArray(responseData)) {
       newItems = responseData;
@@ -104,14 +160,25 @@ const fetchItems = async (isRefresh = false) => {
   } finally {
     loading.value = false;
     isRefresherTriggered.value = false;
+    isCategoryLoading.value = false;
+    hasLoadedOnce.value = true;
   }
+};
+
+const selectCategory = (categoryKey: string) => {
+  if (activeCategory.value === categoryKey) return;
+  activeCategory.value = categoryKey;
+  page.value = 1;
+  noMore.value = false;
+  items.value = [];
+  fetchItems(true, true);
 };
 
 const onRefresh = () => {
   isRefresherTriggered.value = true;
   page.value = 1;
   noMore.value = false;
-  fetchItems(true);
+  fetchItems(true, false);
 };
 
 const loadMore = () => {
@@ -201,10 +268,113 @@ onShow(() => {
   margin-left: 12rpx;
 }
 
+.category-tabs {
+  white-space: nowrap;
+  padding: 0 20rpx 16rpx;
+}
+
+.tab-row {
+  display: inline-flex;
+  align-items: center;
+}
+
+.tab-item {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  margin-right: 20rpx;
+  padding: 10rpx 6rpx 8rpx;
+  color: #666;
+  transition: all 0.2s ease;
+}
+
+.tab-text {
+  font-size: 26rpx;
+  font-weight: 400;
+}
+
+.tab-underline {
+  width: 28rpx;
+  height: 6rpx;
+  border-radius: 999rpx;
+  background-color: transparent;
+  margin-top: 8rpx;
+  transition: all 0.2s ease;
+}
+
+.tab-item.active {
+  color: #07c160;
+  font-weight: 700;
+}
+
+.tab-item.active .tab-text {
+  font-weight: 700;
+}
+
+.tab-item.active .tab-underline {
+  width: 34rpx;
+  background-color: #07c160;
+}
+
+.waterfall-shell {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
 .waterfall {
   flex: 1;
   overflow: hidden;
   padding: 0 20rpx;
+}
+
+.loading-mask {
+  position: absolute;
+  inset: 0;
+  background: rgba(245, 245, 245, 0.82);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+}
+
+.loading-card {
+  min-width: 240rpx;
+  padding: 24rpx 28rpx;
+  border-radius: 20rpx;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16rpx;
+  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.08);
+
+  text {
+    font-size: 26rpx;
+    color: #333;
+  }
+}
+
+.empty-state {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.empty-img {
+  width: 280rpx;
+  height: 280rpx;
+}
+
+.empty-text {
+  margin-top: 20rpx;
+  font-size: 28rpx;
+  color: #999;
 }
 
 .grid {

@@ -253,3 +253,12 @@ WebSocket 历史消息缝合与细节打磨：
 - **发布增强**：`pages/item/post.vue` 增加物品分类选择能力，支持图书、电子产品、生活用品、体育器材、其他 5 大核心预设分类
 - **契约对齐**：`api/item.ts` 为 `createItem` 补齐 `CreateItemPayload`，发布上行链路正式携带 camelCase 的 `category` 字段与后端 v0.24 对齐
 - **表单校验**：发布前新增分类必选拦截，用户未选择分类时明确提示“请选择物品分类”，防止产生无分类物品数据
+
+
+0.9.5
+首页分类筛选 UI 实装：
+
+- **首页增强**：`pages/index/index.vue` 实装横向滚动分类 Tab 栏，支持 `scroll-x`、`enhanced`、`scroll-into-view`，切换时自动将选中分类滚动到可视区域
+- **交互优化**：分类切换时增加瀑布流局部 Loading 遮罩；通过 `hasLoadedOnce` 策略隔离首屏初始化与空列表展示，消除了空状态误闪问题
+- **状态管理**：完成分类切换时的四重重置逻辑，严格执行 `page = 1`、`noMore = false`、`items = []`、重新 `fetchItems()`，并保证下拉刷新继续携带当前分类上下文
+- **契约对齐**：`api/item.ts` 正式启用 `GetItemsParams`，`getItems` 支持 `category` 参数透传；“全部”分类请求时传空字符串，分类 key 与发布端保持 `book/digital/daily/sports/other` 一致
