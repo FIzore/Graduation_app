@@ -71,7 +71,11 @@ import { onShow } from '@dcloudio/uni-app';
 import CustomTabbar from '../../components/custom-tabbar.vue';
 import { conversationStore } from '../../store/conversation';
 import { getItems, getMyAppointments } from '../../api/item';
+import { logout } from '../../api/user';
 import { BASE_URL } from '../../utils/request';
+import { useWebSocket } from '../../utils/websocket';
+
+const ws = useWebSocket();
 
 const userInfo = ref<any>(null);
 const isLogin = ref(false);
@@ -224,13 +228,30 @@ const handleLogout = () => {
     title: '提示',
     content: '确定要退出当前账号吗？',
     confirmColor: '#ff4d4f',
-    success: (res) => {
+    success: async (res) => {
       if (res.confirm) {
-        uni.removeStorageSync('token');
-        uni.removeStorageSync('userInfo');
-        uni.reLaunch({
-          url: '/pages/auth/login'
-        });
+        try {
+          await logout();
+        } catch (err) {
+          console.error('退出登录接口失败，继续执行本地清理:', err);
+        } finally {
+          ws.close();
+          conversationStore.reset();
+          uni.clearStorageSync();
+          userInfo.value = null;
+          currentUserId.value = '';
+          fallbackAccount.value = '';
+          isLogin.value = false;
+          publishedCount.value = 0;
+          appointmentCount.value = 0;
+
+          uni.showToast({ title: '退出成功', icon: 'success' });
+          setTimeout(() => {
+            uni.reLaunch({
+              url: '/pages/auth/login'
+            });
+          }, 800);
+        }
       }
     }
   });

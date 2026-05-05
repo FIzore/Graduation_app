@@ -131,6 +131,10 @@ function connect(): void {
 }
 
 function disconnect(): void {
+  close();
+}
+
+function close(): void {
   state.manualClose = true;
 
   if (state.retryTimer !== null) {
@@ -146,7 +150,6 @@ function disconnect(): void {
   state.connected = false;
   state.retryCount = 0;
   state.pendingQueue = [];
-  state.listeners.clear();
 }
 
 function on(event: EventType, callback: EventCallback): void {
@@ -171,5 +174,5 @@ function send(data: Record<string, unknown>): void {
 }
 
 export function useWebSocket() {
-  return { connect, disconnect, on, off, send };
+  return { connect, disconnect, close, on, off, send };
 }

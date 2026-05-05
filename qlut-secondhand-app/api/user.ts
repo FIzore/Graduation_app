@@ -38,6 +38,13 @@ export const bindWeChat = (code: string) => {
 };
 
 /**
+ * 用户登出接口
+ */
+export const logout = () => {
+  return request('/auth/logout', 'POST');
+};
+
+/**
  * 鉴权探测接口
  */
 export const ping = () => {

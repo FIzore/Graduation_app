@@ -74,6 +74,9 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue';
 import { login, register, bindWeChat } from '../../api/user';
+import { useWebSocket } from '../../utils/websocket';
+
+const ws = useWebSocket();
 
 const isLogin = ref(true);
 const loading = ref(false);
@@ -106,6 +109,7 @@ const handleSubmit = async () => {
       };
       uni.setStorageSync('userInfo', mergedUserInfo);
       uni.setStorageSync('lastLoginAccount', formData.studentId);
+      ws.connect();
 
       uni.showToast({ title: '欢迎回来', icon: 'success' });
       uni.$emit('loginSuccess');

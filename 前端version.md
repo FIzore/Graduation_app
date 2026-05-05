@@ -262,3 +262,11 @@ WebSocket 历史消息缝合与细节打磨：
 - **交互优化**：分类切换时增加瀑布流局部 Loading 遮罩；通过 `hasLoadedOnce` 策略隔离首屏初始化与空列表展示，消除了空状态误闪问题
 - **状态管理**：完成分类切换时的四重重置逻辑，严格执行 `page = 1`、`noMore = false`、`items = []`、重新 `fetchItems()`，并保证下拉刷新继续携带当前分类上下文
 - **契约对齐**：`api/item.ts` 正式启用 `GetItemsParams`，`getItems` 支持 `category` 参数透传；“全部”分类请求时传空字符串，分类 key 与发布端保持 `book/digital/daily/sports/other` 一致
+
+
+0.9.6
+安全登出逻辑与 WebSocket 状态重置：
+
+- **安全增强**：`api/user.ts` 实装 `POST /auth/logout`，并与后端 Token 黑名单机制联动，确保退出后令牌立即失效
+- **状态隔离**：`store/conversation.ts` 完成 `reset()` 深度清空逻辑，退出后彻底移除会话列表并重置缓存用户 ID，杜绝换号登录造成的数据污染
+- **WS 优化**：`utils/websocket.ts` 实装 `ws.close()` 手动关闭机制，退出时清理重连定时器、重置重连计数并清空待发送队列，彻底解决登出后后台重连的资源浪费问题

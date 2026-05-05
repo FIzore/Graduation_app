@@ -18,6 +18,7 @@ interface ConversationStore {
   updateConversation(msg: any): void;
   markRead(otherUserId: number, itemId: number): void;
   getMyUserId(): number;
+  reset(): void;
 }
 
 function decodeBase64Url(input: string): string {
@@ -106,6 +107,13 @@ export const conversationStore = reactive<ConversationStore>({
     if (this.conversations[key]) {
       this.conversations[key].unreadCount = 0;
     }
+  },
+
+  reset() {
+    Object.keys(this.conversations).forEach((key) => {
+      delete this.conversations[key];
+    });
+    cachedUserId = -1;
   },
 
   getMyUserId,
