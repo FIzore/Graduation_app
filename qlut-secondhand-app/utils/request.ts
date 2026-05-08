@@ -18,11 +18,13 @@ const getErrorToastMessage = (code: number, url: string, msg?: string) => {
     case 401:
       return '登录状态已失效，请重新登录';
     case 403:
-      return url === '/auth/login' ? '账号已锁定' : '无权操作';
+      return msg || (url === '/auth/login' ? '账号已锁定' : '无权操作');
+    case 400:
+      return msg || '请求失败';
     case 429:
-      return '操作太快了，请稍后再试';
+      return msg || '操作太快了，请稍后再试';
     case 500:
-      return '服务器开小差了，请稍后重试';
+      return msg || '服务器开小差了，请稍后重试';
     default:
       return msg || '请求失败';
   }
@@ -60,9 +62,10 @@ export const request = <T = any>(
       success: (res: any) => {
         const responseData = res.data as HttpResponse<T>;
         const responseCode = Number(responseData.code || res.statusCode || 500);
-        const toastMessage = getErrorToastMessage(responseCode, url, responseData.msg);
+        const responseMsg = (responseData as any)?.msg || (responseData as any)?.message || '';
+        const toastMessage = getErrorToastMessage(responseCode, url, responseMsg);
 
-        if (responseCode === 200) {
+        if (responseCode === 200 || responseCode === 201) {
           resolve(responseData);
           return;
         }

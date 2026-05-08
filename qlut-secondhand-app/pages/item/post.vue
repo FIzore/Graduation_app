@@ -213,7 +213,11 @@ const handlePublish = async () => {
   } catch (err) {
     const requestError = err as RequestError;
     if (requestError.code === 403) {
-      uni.showToast({ title: requestError.msg || requestError.message || '发布内容不符合规范', icon: 'none' });
+      uni.showToast({
+        title: requestError.msg || requestError.message || '发布内容不符合规范',
+        icon: 'none',
+        duration: 3000
+      });
       return;
     }
 
