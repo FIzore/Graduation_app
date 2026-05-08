@@ -134,7 +134,7 @@ const loadInitialHistory = async () => {
   loadingHistory.value = true;
   uni.showLoading({ title: '加载中...' });
   try {
-    const res = await getChatHistory(userId.value, 1, PAGE_SIZE, itemId.value || undefined);
+    const res = await getChatHistory(userId.value, 1, PAGE_SIZE, itemId.value);
     const data = res.data;
     const msgs = Array.isArray(data) ? data : (data as any)?.messages ?? (data as any)?.list ?? [];
     const arr = Array.isArray(msgs) ? msgs.reverse() : [];
@@ -165,7 +165,7 @@ const loadMoreHistory = async () => {
   loadingHistory.value = true;
   try {
     historyPage.value++;
-    const res = await getChatHistory(userId.value, historyPage.value, PAGE_SIZE, itemId.value || undefined);
+    const res = await getChatHistory(userId.value, historyPage.value, PAGE_SIZE, itemId.value);
     const data = res.data;
     const msgs = Array.isArray(data) ? data : (data as any)?.messages ?? (data as any)?.list ?? [];
     const arr = Array.isArray(msgs) ? msgs.reverse() : [];
@@ -280,6 +280,11 @@ onLoad(async (options: any) => {
   userId.value = uid;
   nickname.value = decodeURIComponent(options.nickname || '用户' + uid);
   itemId.value = Number(options.itemId || 0);
+  if (!itemId.value) {
+    uni.showToast({ title: '缺少物品上下文', icon: 'none' });
+    setTimeout(() => uni.navigateBack(), 1000);
+    return;
+  }
   itemTitle.value = decodeURIComponent(options.itemTitle || '');
   itemCover.value = decodeURIComponent(options.itemCover || '');
   itemPrice.value = decodeURIComponent(options.itemPrice || '');

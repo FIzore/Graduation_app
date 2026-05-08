@@ -36,11 +36,36 @@ export interface GetItemsParams {
   category?: string;
 }
 
+export interface UserItemListResponse {
+  items?: Item[];
+  list?: Item[];
+  data?: Item[];
+}
+
+export interface RecommendListResponse {
+  items?: Item[];
+  total?: number;
+}
+
 /**
  * 分页获取物品列表
  */
 export const getItems = (params: GetItemsParams) => {
   return request<{ items: Item[]; total: number }>('/items', 'GET', params);
+};
+
+/**
+ * 获取首页推荐流（匿名回退最新上架，登录优先个性化推荐）
+ */
+export const getIndexRecommend = () => {
+  return request<RecommendListResponse>('/index/recommend', 'GET');
+};
+
+/**
+ * 获取当前用户发布的物品列表
+ */
+export const getMyItems = () => {
+  return request<Item[] | UserItemListResponse>('/user/items', 'GET');
 };
 
 /**

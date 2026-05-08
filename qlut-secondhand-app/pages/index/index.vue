@@ -29,6 +29,10 @@
     </scroll-view>
     
     <view class="waterfall-shell">
+      <view class="recommend-banner" v-if="recommendBannerText">
+        <text class="recommend-banner-text">{{ recommendBannerText }}</text>
+      </view>
+
       <!-- 物品瀑布流 -->
       <scroll-view 
         scroll-y 
@@ -37,22 +41,22 @@
         refresher-enabled
         :refresher-triggered="isRefresherTriggered"
         @refresherrefresh="onRefresh"
+        @refresherrestore="onRestore"
       >
         <view class="grid">
           <view 
             class="item-card" 
             v-for="item in items" 
-            :key="item.id || (item as any).ID" 
-            @click="goToDetail(item.id || (item as any).ID)"
+            :key="item.id" 
+            @click="goToDetail(item.id)"
           >
             <!-- 图片展示：兼容相对路径与外部链接 -->
-            <image :src="getCoverImage(item.images || (item as any).Images)" mode="aspectFill" class="item-img" />
+            <image :src="getCoverImage(item.images)" mode="aspectFill" class="item-img" />
             
-            <!-- 信息展示：兼容大小写字段 -->
             <view class="item-info">
-              <text class="item-title">{{ item.title || (item as any).Title || '未命名物品' }}</text>
-              <text class="item-price">¥{{ item.price || (item as any).Price || '0.00' }}</text>
-              <text class="item-status" v-if="item.status === 'Pending' || (item as any).Status === 'Pending'">预约交接中</text>
+              <text class="item-title">{{ item.title || '未命名物品' }}</text>
+              <text class="item-price">¥{{ item.price || '0.00' }}</text>
+              <text class="item-status" v-if="item.status === 'Pending'">预约交接中</text>
             </view>
           </view>
         </view>
@@ -67,7 +71,7 @@
 
       <view class="empty-state" v-if="hasLoadedOnce && !loading && !isCategoryLoading && items.length === 0">
         <image src="/static/empty.png" mode="aspectFit" class="empty-img" />
-        <text class="empty-text">暂无相关宝贝</text>
+        <text class="empty-text">{{ emptyStateText }}</text>
       </view>
     </view>
     <!-- TabBar 放在 scroll-view 外，确保 fixed 生效 -->
@@ -78,10 +82,12 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
-import { getItems, type Item } from '../../api/item';
+import { getItems, getIndexRecommend, type Item, type RecommendListResponse } from '../../api/item';
 import { IMAGE_BASE_URL } from '../../config';
 import { conversationStore } from '../../store/conversation';
 import CustomTabbar from '../../components/custom-tabbar.vue';
+
+type ItemListResponse = Item[] | { items?: Item[]; total?: number };
 
 const serverUrl = IMAGE_BASE_URL;
 const items = ref<Item[]>([]);
@@ -93,6 +99,11 @@ const isRefresherTriggered = ref(false);
 const isCategoryLoading = ref(false);
 const activeCategory = ref('all');
 const hasLoadedOnce = ref(false);
+const isLoggedIn = ref(false);
+const isRecommendMode = ref(true);
+const recommendLoadFailed = ref(false);
+const fallbackHint = ref('');
+const isFallbackBaseMode = ref(false);
 
 const categoryTabs = [
   { key: 'all', label: '全部' },
@@ -103,33 +114,108 @@ const categoryTabs = [
   { key: 'other', label: '其他' }
 ];
 
-// 拉取列表数据（API + Mock 回退）
+const getRecommendHint = () => {
+  return isLoggedIn.value
+    ? '✨ 根据你的浏览与想要记录为你推荐'
+    : '当前为最新上架，登录后可体验个性化推荐';
+};
+
+const recommendBannerText = ref(getRecommendHint());
+
+const emptyStateText = ref('暂无相关宝贝');
+
+const updateRecommendMode = () => {
+  isRecommendMode.value = activeCategory.value === 'all';
+};
+
+const updateBannerText = () => {
+  if (fallbackHint.value) {
+    recommendBannerText.value = fallbackHint.value;
+    return;
+  }
+
+  if (isRecommendMode.value) {
+    recommendBannerText.value = getRecommendHint();
+    return;
+  }
+
+  const currentLabel = categoryTabs.find((item) => item.key === activeCategory.value)?.label || '全部';
+  recommendBannerText.value = `当前查看${currentLabel}分类`;
+};
+
+const extractItems = (raw: ItemListResponse | RecommendListResponse | undefined): Item[] => {
+  if (Array.isArray(raw)) return raw;
+  if (Array.isArray(raw?.items)) return raw.items;
+  return [];
+};
+
+const syncLoginState = () => {
+  isLoggedIn.value = Boolean(uni.getStorageSync('token'));
+};
+
+const setDefaultRecommendHint = () => {
+  fallbackHint.value = '';
+  isFallbackBaseMode.value = false;
+  updateBannerText();
+};
+
+const fetchRecommendItems = async (): Promise<Item[]> => {
+  const res = await getIndexRecommend();
+  recommendLoadFailed.value = false;
+  fallbackHint.value = '';
+  isFallbackBaseMode.value = false;
+  return extractItems(res.data);
+};
+
+const fetchBaseItems = async (): Promise<Item[]> => {
+  const res = await getItems({
+    page: page.value,
+    pageSize: size.value,
+    status: 'OnSale',
+    category: activeCategory.value === 'all' ? '' : activeCategory.value
+  });
+
+  return extractItems(res.data);
+};
+
+// 拉取列表数据（推荐流 / 分类流 / 明确降级）
 const fetchItems = async (isRefresh = false, showCategoryLoading = false) => {
-  if (loading.value || (noMore.value && !isRefresh)) return;
+  if (loading.value) {
+    isRefresherTriggered.value = false;
+    return;
+  }
+
+  if (noMore.value && !isRefresh) return;
   
   loading.value = true;
   if (showCategoryLoading) {
     isCategoryLoading.value = true;
   }
   try {
-    // 状态 OnSale 代表在售
-    const res = await getItems({
-      page: page.value,
-      pageSize: size.value,
-      status: 'OnSale',
-      category: activeCategory.value === 'all' ? '' : activeCategory.value
-    });
-    
-    // 兼容不同返回结构
-    let newItems: any[] = [];
-    const responseData = res.data as any;
-    if (Array.isArray(responseData)) {
-      newItems = responseData;
-    } else if (responseData && Array.isArray(responseData.items)) {
-      newItems = responseData.items;
-    } else if (responseData && responseData.data && Array.isArray(responseData.data)) {
-      newItems = responseData.data;
+    let newItems: Item[] = [];
+
+    if (isRecommendMode.value) {
+      try {
+        newItems = await fetchRecommendItems();
+        emptyStateText.value = '暂无推荐内容';
+        noMore.value = true;
+      } catch (recommendError) {
+        console.error('获取推荐流失败，回退基础内容', recommendError);
+        recommendLoadFailed.value = true;
+        fallbackHint.value = '推荐引擎正在升级中，先为你展示基础内容';
+        isFallbackBaseMode.value = true;
+        newItems = await fetchBaseItems();
+        emptyStateText.value = '暂无基础内容';
+      }
+    } else {
+      recommendLoadFailed.value = false;
+      fallbackHint.value = '';
+      isFallbackBaseMode.value = false;
+      newItems = await fetchBaseItems();
+      emptyStateText.value = '暂无相关宝贝';
     }
+
+    updateBannerText();
     
     if (isRefresh) {
       items.value = newItems;
@@ -143,42 +229,71 @@ const fetchItems = async (isRefresh = false, showCategoryLoading = false) => {
     }
     
     // 根据返回长度判断是否没有更多
-    if (!newItems || newItems.length < size.value) {
+    if (isFallbackBaseMode.value || !isRecommendMode.value) {
+      noMore.value = !newItems || newItems.length < size.value;
+    } else if (!newItems || newItems.length < size.value) {
       noMore.value = true;
     }
   } catch (error) {
-    console.error('获取物品失败，切换到 Mock 数据', error);
-    // Mock 数据作为回退，便于 UI 演示与验证
+    console.error('首页数据加载失败，切换到本地兜底', error);
     if (items.value.length === 0) {
+      fallbackHint.value = isRecommendMode.value
+        ? '推荐引擎正在升级中，当前展示本地兜底内容'
+        : '列表服务暂时不可用，当前展示本地兜底内容';
+      recommendLoadFailed.value = isRecommendMode.value;
+      isFallbackBaseMode.value = false;
+      updateBannerText();
+      emptyStateText.value = '推荐引擎正在升级中，请稍后再试';
       items.value = [
-        { id: 1, publisher_id: 101, title: '九成新高数课本，笔记清晰', content: '保护得很好', price: 15.0, images: [''], status: 'OnSale' },
-        { id: 2, publisher_id: 102, title: '全新未拆封蓝牙耳机', content: '未拆封', price: 80.0, images: [''], status: 'Pending' },
-        { id: 3, publisher_id: 103, title: '考研政治核心考案', content: '附赠资料', price: 30.0, images: [''], status: 'OnSale' }
+        { id: 1, publisherId: 101, title: '九成新高数课本，笔记清晰', content: '保护得很好', price: 15.0, images: [''], status: 'OnSale' },
+        { id: 2, publisherId: 102, title: '全新未拆封蓝牙耳机', content: '未拆封', price: 80.0, images: [''], status: 'Pending' },
+        { id: 3, publisherId: 103, title: '考研政治核心考案', content: '附赠资料', price: 30.0, images: [''], status: 'OnSale' }
       ];
       noMore.value = true;
     }
   } finally {
     loading.value = false;
-    isRefresherTriggered.value = false;
     isCategoryLoading.value = false;
     hasLoadedOnce.value = true;
+    setTimeout(() => {
+      isRefresherTriggered.value = false;
+    }, 300);
+    uni.stopPullDownRefresh();
   }
 };
 
 const selectCategory = (categoryKey: string) => {
   if (activeCategory.value === categoryKey) return;
   activeCategory.value = categoryKey;
+  updateRecommendMode();
+  if (isRecommendMode.value) {
+    setDefaultRecommendHint();
+  } else {
+    fallbackHint.value = '';
+    recommendLoadFailed.value = false;
+    isFallbackBaseMode.value = false;
+    updateBannerText();
+  }
   page.value = 1;
   noMore.value = false;
   items.value = [];
+  hasLoadedOnce.value = false;
   fetchItems(true, true);
 };
 
 const onRefresh = () => {
+  syncLoginState();
+  if (isRecommendMode.value && !fallbackHint.value) {
+    updateBannerText();
+  }
   isRefresherTriggered.value = true;
   page.value = 1;
   noMore.value = false;
   fetchItems(true, false);
+};
+
+const onRestore = () => {
+  isRefresherTriggered.value = false;
 };
 
 const loadMore = () => {
@@ -232,10 +347,18 @@ const getCoverImage = (imagesStr: any) => {
 };
 
 onMounted(() => {
+  syncLoginState();
+  updateRecommendMode();
+  updateBannerText();
   fetchItems(true);
 });
 
 onShow(() => {
+  syncLoginState();
+  updateRecommendMode();
+  if (!fallbackHint.value) {
+    updateBannerText();
+  }
   uni.hideTabBar();
 });
 </script>
@@ -318,12 +441,30 @@ onShow(() => {
 
 .waterfall-shell {
   position: relative;
+  display: flex;
+  flex-direction: column;
   flex: 1;
   min-height: 0;
+  overflow: hidden;
+}
+
+.recommend-banner {
+  margin: 0 20rpx 16rpx;
+  padding: 18rpx 22rpx;
+  border-radius: 20rpx;
+  background: linear-gradient(135deg, rgba(7, 193, 96, 0.12), rgba(7, 193, 96, 0.04));
+  border: 1rpx solid rgba(7, 193, 96, 0.15);
+}
+
+.recommend-banner-text {
+  font-size: 24rpx;
+  color: #2f6b3f;
+  line-height: 1.5;
 }
 
 .waterfall {
   flex: 1;
+  height: 100%;
   overflow: hidden;
   padding: 0 20rpx;
 }

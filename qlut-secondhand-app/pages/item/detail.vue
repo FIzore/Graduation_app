@@ -60,11 +60,13 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
-import { getItemDetail, createAppointment, reportBehaviors } from '../../api/item';
+import { getItemDetail, createAppointment, type Item } from '../../api/item';
 import { IMAGE_BASE_URL } from '../../config';
 import { conversationStore } from '../../store/conversation';
 
-const item = ref<any | null>(null);
+type DetailItem = Item & { nickname?: string };
+
+const item = ref<DetailItem | null>(null);
 const reserving = ref(false);
 const serverUrl = IMAGE_BASE_URL;
 
@@ -93,28 +95,15 @@ const formatImage = (url?: string) => {
   return `${serverUrl}${url.startsWith('/') ? '' : '/'}${url}`;
 };
 
-const itemId = computed(() => item.value?.ID || item.value?.id || 0);
-const itemTitle = computed(() => item.value?.Title || item.value?.title || '未命名物品');
-const itemPrice = computed(() => item.value?.Price ?? item.value?.price ?? '0.00');
-const itemStatus = computed(() => item.value?.Status || item.value?.status || 'OnSale');
-const itemContent = computed(() => item.value?.Content || item.value?.content || '暂无详细描述');
-const itemTime = computed(() => item.value?.CreatedAt || item.value?.created_at || new Date());
+const itemId = computed(() => item.value?.id || 0);
+const itemTitle = computed(() => item.value?.title || '未命名物品');
+const itemPrice = computed(() => item.value?.price ?? '0.00');
+const itemStatus = computed(() => item.value?.status || 'OnSale');
+const itemContent = computed(() => item.value?.content || '暂无详细描述');
+const itemTime = computed(() => item.value?.createdAt || new Date());
 
-const publisherId = computed(() => item.value?.PublisherID ?? item.value?.publisher_id ?? item.value?.publisherId ?? 0);
-const publisherNickname = computed(() => item.value?.Nickname ?? item.value?.nickname ?? '卖家');
-
-const sendViewBehavior = async (id: number) => {
-  const token = uni.getStorageSync('token');
-  if (!token) {
-    return;
-  }
-
-  try {
-    await reportBehaviors([{ itemId: id, behaviorType: 'view' }]);
-  } catch (error) {
-    console.warn('上报浏览埋点失败:', error);
-  }
-};
+const publisherId = computed(() => item.value?.publisherId ?? 0);
+const publisherNickname = computed(() => item.value?.nickname || '卖家');
 
 const isSelf = computed(() => {
   const myId = conversationStore.getMyUserId();
@@ -122,7 +111,7 @@ const isSelf = computed(() => {
 });
 
 const formattedImages = computed(() => {
-  const raw = item.value?.Images ?? item.value?.images;
+  const raw = item.value?.images;
   const images = parseImages(raw);
   return images.map((img) => formatImage(img));
 });
@@ -138,7 +127,6 @@ const onLoadHandler = async (options: any) => {
   try {
     const res = await getItemDetail(id);
     item.value = res.data;
-    sendViewBehavior(id);
   } catch (error) {
     console.error('获取详情失败:', error);
   }
@@ -167,18 +155,10 @@ const handleReserve = async () => {
   reserving.value = true;
   try {
     await createAppointment(itemId.value);
-    uni.showToast({ title: '预约成功', icon: 'success' });
-
-    if (item.value.Status !== undefined) {
-      item.value.Status = 'Pending';
-    }
-    if (item.value.status !== undefined) {
-      item.value.status = 'Pending';
-    }
+    uni.showToast({ title: '预约成功', icon: 'none' });
+    item.value.status = 'Pending';
   } catch (error: any) {
-    if (error.message?.includes('429')) {
-      uni.showToast({ title: '该物品已被锁定', icon: 'none' });
-    }
+    console.error('预约失败:', error);
   } finally {
     reserving.value = false;
   }

@@ -75,6 +75,7 @@
 import { ref, reactive } from 'vue';
 import { login, register, bindWeChat } from '../../api/user';
 import { useWebSocket } from '../../utils/websocket';
+import type { RequestError } from '../../utils/request';
 
 const ws = useWebSocket();
 
@@ -111,16 +112,25 @@ const handleSubmit = async () => {
       uni.setStorageSync('lastLoginAccount', formData.studentId);
       ws.connect();
 
-      uni.showToast({ title: '欢迎回来', icon: 'success' });
+      uni.showToast({ title: '欢迎回来', icon: 'none' });
       uni.$emit('loginSuccess');
 
       setTimeout(() => {
         uni.reLaunch({ url: '/pages/index/index' });
       }, 1000);
     } else {
-      await register(formData);
-      uni.showToast({ title: '注册成功，请登录', icon: 'success' });
-      isLogin.value = true;
+      try {
+        await register(formData);
+        uni.showToast({ title: '注册成功，请登录', icon: 'none' });
+        isLogin.value = true;
+      } catch (err) {
+        const requestError = err as RequestError;
+        if (requestError.code === 409) {
+          uni.showToast({ title: '该学号已被注册，请直接登录或联系管理员', icon: 'none' });
+          return;
+        }
+        throw err;
+      }
     }
   } catch (err) {
     console.error(err);
@@ -147,7 +157,7 @@ const handleWeChatAuth = () => {
 
       try {
         await bindWeChat(res.code);
-        uni.showToast({ title: '微信绑定成功', icon: 'success' });
+        uni.showToast({ title: '微信绑定成功', icon: 'none' });
       } catch (err) {
         console.error('绑定失败', err);
       }

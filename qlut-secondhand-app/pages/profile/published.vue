@@ -14,15 +14,15 @@
           class="item-card"
           v-for="(item, idx) in publishedItems"
           :key="idx"
-          @click="goToDetail(item.ID || item.id)"
+          @click="goToDetail(item.id)"
         >
           <image class="card-img" :src="getItemCover(item)" mode="aspectFill"></image>
           <view class="card-info">
-            <text class="card-title">{{ item.Title || item.title }}</text>
+            <text class="card-title">{{ item.title }}</text>
             <view class="card-bottom">
-              <text class="card-price">¥ {{ item.Price || item.price }}</text>
-              <text class="card-status" :class="'status-' + (item.Status || item.status)">
-                {{ formatStatus(item.Status || item.status) }}
+              <text class="card-price">¥ {{ item.price }}</text>
+              <text class="card-status" :class="'status-' + item.status">
+                {{ formatStatus(item.status) }}
               </text>
             </view>
           </view>
@@ -40,7 +40,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
-import { getItems } from '../../api/item';
+import { getMyItems, type Item, type UserItemListResponse } from '../../api/item';
 import { IMAGE_BASE_URL } from '../../config';
 
 const goBack = () => {
@@ -52,38 +52,8 @@ const goToDetail = (id: number | string | undefined) => {
   uni.navigateTo({ url: `/pages/item/detail?id=${id}` });
 };
 
-const publishedItems = ref<any[]>([]);
+const publishedItems = ref<Item[]>([]);
 const loading = ref(false);
-
-const decodeBase64Url = (input: string): string => {
-  try {
-    const base64 = input.replace(/-/g, '+').replace(/_/g, '/');
-    const pad = '='.repeat((4 - (base64.length % 4)) % 4);
-    const normalized = base64 + pad;
-    if (typeof atob === 'function') {
-      return atob(normalized);
-    }
-    const arr = uni.base64ToArrayBuffer(normalized);
-    return new TextDecoder().decode(arr);
-  } catch {
-    return '';
-  }
-};
-
-const getUserIdFromToken = (): string => {
-  const token = uni.getStorageSync('token');
-  if (!token || typeof token !== 'string') return '';
-  const parts = token.split('.');
-  if (parts.length < 2) return '';
-
-  try {
-    const payload = decodeBase64Url(parts[1]);
-    const data = JSON.parse(payload);
-    return String(data.user_id || data.id || data.uid || data.sub || '');
-  } catch {
-    return '';
-  }
-};
 
 const formatImage = (url?: string) => {
   if (!url) return '/static/default.png';
@@ -111,20 +81,20 @@ const parseImages = (raw: any): string[] => {
   return [];
 };
 
-const getItemCover = (item: any) => {
-  const images = parseImages(item.Images ?? item.images);
+const getItemCover = (item: Item) => {
+  const images = parseImages(item.images);
   return formatImage(images[0]);
 };
 
-const formatStatus = (status: number | string | undefined) => {
+const formatStatus = (status: string | undefined) => {
   const s = String(status || '').toLowerCase();
-  if (s === '1' || s === 'onsale') return '在售';
-  if (s === '2' || s === 'pending') return '锁定中';
-  if (s === '3' || s === 'completed') return '已交接';
+  if (s === 'onsale') return '在售';
+  if (s === 'pending') return '锁定中';
+  if (s === 'completed') return '已交接';
   return '未知';
 };
 
-const extractItems = (raw: any): any[] => {
+const extractItems = (raw: Item[] | UserItemListResponse | undefined): Item[] => {
   if (Array.isArray(raw)) return raw;
   if (Array.isArray(raw?.items)) return raw.items;
   if (Array.isArray(raw?.list)) return raw.list;
@@ -135,28 +105,8 @@ const extractItems = (raw: any): any[] => {
 const loadPublishedItems = async () => {
   loading.value = true;
   try {
-    const storedInfo = uni.getStorageSync('userInfo');
-    let currentUserId = '';
-    if (storedInfo) {
-      const userInfo = typeof storedInfo === 'string' ? JSON.parse(storedInfo) : storedInfo;
-      currentUserId = String(userInfo.ID || userInfo.id || '');
-    }
-    if (!currentUserId) {
-      currentUserId = getUserIdFromToken();
-    }
-
-    if (!currentUserId) {
-      publishedItems.value = [];
-      return;
-    }
-
-    const itemsRes = await getItems({ page: 1, pageSize: 500 } as any).catch(() => ({ data: [] as any }));
-    const allItems = extractItems(itemsRes.data);
-
-    publishedItems.value = allItems.filter((item: any) => {
-      const isMine = String(item.PublisherID || item.publisherId || item.publisher_id) === currentUserId;
-      return isMine;
-    });
+    const itemsRes = await getMyItems().catch(() => ({ data: [] as Item[] }));
+    publishedItems.value = extractItems(itemsRes.data);
   } catch (e) {
     console.error('加载发布物品失败', e);
     publishedItems.value = [];

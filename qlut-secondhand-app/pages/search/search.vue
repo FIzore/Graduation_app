@@ -28,18 +28,22 @@
       scroll-y
       v-if="hasSearched"
       @scrolltolower="loadMore"
+      refresher-enabled
+      :refresher-triggered="isRefresherTriggered"
+      @refresherrefresh="onRefresh"
+      @refresherrestore="onRestore"
     >
       <view class="grid" v-if="resultItems.length > 0">
         <view
           class="item-card"
           v-for="item in resultItems"
-          :key="item.id || (item as any).ID"
-          @click="goToDetail(item.id || (item as any).ID)"
+          :key="item.id"
+          @click="goToDetail(item.id)"
         >
           <image :src="getItemCover(item)" mode="aspectFill" class="item-img" />
           <view class="item-info">
-            <text class="item-title">{{ item.title || (item as any).Title || '未命名' }}</text>
-            <text class="item-price">¥{{ item.price || (item as any).Price || '0.00' }}</text>
+            <text class="item-title">{{ item.title || '未命名' }}</text>
+            <text class="item-price">¥{{ item.price || '0.00' }}</text>
           </view>
         </view>
       </view>
@@ -83,8 +87,8 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
-import { onShow, onLoad } from '@dcloudio/uni-app';
-import { getItems } from '../../api/item';
+import { onShow } from '@dcloudio/uni-app';
+import { getItems, type Item } from '../../api/item';
 import { IMAGE_BASE_URL } from '../../config';
 
 const HISTORY_KEY = 'searchHistory';
@@ -108,11 +112,12 @@ const navBarRightPadding = (systemInfo.windowWidth || 375) - capsuleRight + 16;
 
 const keyword = ref('');
 const page = ref(1);
-const resultItems = ref<any[]>([]);
+const resultItems = ref<Item[]>([]);
 const loading = ref(false);
 const hasSearched = ref(false);
 const noMore = ref(false);
 const historyList = ref<string[]>([]);
+const isRefresherTriggered = ref(false);
 
 const loadHistory = () => {
   try {
@@ -144,8 +149,8 @@ const parseImages = (raw: any): string[] => {
   return [];
 };
 
-const getItemCover = (item: any) => {
-  const images = parseImages(item.Images ?? item.images);
+const getItemCover = (item: Item) => {
+  const images = parseImages(item.images);
   const first = images[0];
   if (!first) return '/static/default.png';
   if (first.startsWith('http')) return first;
@@ -172,6 +177,8 @@ const clearKeyword = () => {
   keyword.value = '';
   hasSearched.value = false;
   resultItems.value = [];
+  noMore.value = false;
+  isRefresherTriggered.value = false;
 };
 
 const clearHistory = () => {
@@ -188,16 +195,20 @@ const goBack = () => {
   uni.navigateBack();
 };
 
-const extractItems = (raw: any): any[] => {
+const extractItems = (raw: Item[] | { items?: Item[] } | undefined): Item[] => {
   if (Array.isArray(raw)) return raw;
   if (Array.isArray(raw?.items)) return raw.items;
-  if (Array.isArray(raw?.list)) return raw.list;
-  if (Array.isArray(raw?.data)) return raw.data;
   return [];
 };
 
 const fetchResults = async (reset = false) => {
-  if (loading.value || noMore.value) return;
+  if (loading.value) {
+    isRefresherTriggered.value = false;
+    return;
+  }
+
+  if (noMore.value) return;
+
   loading.value = true;
   try {
     const res = await getItems({
@@ -216,7 +227,27 @@ const fetchResults = async (reset = false) => {
     console.error('搜索失败:', e);
   } finally {
     loading.value = false;
+    setTimeout(() => {
+      isRefresherTriggered.value = false;
+    }, 300);
+    uni.stopPullDownRefresh();
   }
+};
+
+const onRefresh = () => {
+  if (!hasSearched.value) {
+    isRefresherTriggered.value = false;
+    uni.stopPullDownRefresh();
+    return;
+  }
+  isRefresherTriggered.value = true;
+  page.value = 1;
+  noMore.value = false;
+  fetchResults(true);
+};
+
+const onRestore = () => {
+  isRefresherTriggered.value = false;
 };
 
 const loadMore = () => {
@@ -294,6 +325,7 @@ onShow(() => {
 
 .result-list {
   flex: 1;
+  height: 100%;
   overflow: hidden;
   padding: 20rpx;
 }

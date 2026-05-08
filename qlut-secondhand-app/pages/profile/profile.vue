@@ -70,7 +70,7 @@ import { computed, ref } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
 import CustomTabbar from '../../components/custom-tabbar.vue';
 import { conversationStore } from '../../store/conversation';
-import { getItems, getMyAppointments } from '../../api/item';
+import { getMyAppointments, getMyItems, type Item, type UserItemListResponse } from '../../api/item';
 import { logout } from '../../api/user';
 import { BASE_URL } from '../../utils/request';
 import { useWebSocket } from '../../utils/websocket';
@@ -92,12 +92,9 @@ const displayName = computed(() => {
   const candidate =
     // 预留：后续若后端返回微信展示名，优先使用
     info?.displayName ||
-    info?.DisplayName ||
     // 当前阶段：用户名绑定为注册账号（学号）
-    info?.student_id ||
-    info?.StudentID ||
+    info?.studentId ||
     info?.account ||
-    info?.Account ||
     // 兜底：登录时存储的账号
     fallbackAccount.value;
 
@@ -109,11 +106,7 @@ const displayAvatar = computed(() => {
   const info = userInfo.value;
   const avatar =
     info?.displayAvatar ||
-    info?.DisplayAvatar ||
     info?.avatar ||
-    info?.Avatar ||
-    info?.avatar_url ||
-    info?.AvatarURL ||
     '';
 
   const normalizedAvatar = String(avatar).trim();
@@ -129,8 +122,14 @@ const displayAvatar = computed(() => {
 const extractList = (raw: any): any[] => {
   if (Array.isArray(raw)) return raw;
   if (Array.isArray(raw?.items)) return raw.items;
-  if (Array.isArray(raw?.list)) return raw.list;
   if (Array.isArray(raw?.appointments)) return raw.appointments;
+  return [];
+};
+
+const extractMyItems = (raw: Item[] | UserItemListResponse | undefined): Item[] => {
+  if (Array.isArray(raw)) return raw;
+  if (Array.isArray(raw?.items)) return raw.items;
+  if (Array.isArray(raw?.list)) return raw.list;
   if (Array.isArray(raw?.data)) return raw.data;
   return [];
 };
@@ -174,7 +173,7 @@ onShow(() => {
     try {
       const parsedUserInfo = typeof storedInfo === 'string' ? JSON.parse(storedInfo) : storedInfo;
       userInfo.value = parsedUserInfo;
-      currentUserId.value = String(parsedUserInfo.ID || parsedUserInfo.id || '');
+      currentUserId.value = String(parsedUserInfo.userId || parsedUserInfo.id || '');
       isLogin.value = true;
     } catch (e) {
       console.error('解析用户信息失败', e);
@@ -209,13 +208,8 @@ const fetchStats = async () => {
       return;
     }
 
-    const itemsRes = await getItems({ page: 1, pageSize: 500 } as any).catch(() => ({ data: [] as any }));
-    const allItems = extractList(itemsRes.data);
-
-    publishedCount.value = allItems.filter((item: any) => {
-      const isMine = String(item.PublisherID || item.publisher_id) === currentUserId.value;
-      return isMine;
-    }).length;
+    const itemsRes = await getMyItems().catch(() => ({ data: [] as Item[] }));
+    publishedCount.value = extractMyItems(itemsRes.data).length;
   } catch (err) {
     console.error('获取统计数据失败:', err);
   } finally {
@@ -245,7 +239,7 @@ const handleLogout = () => {
           publishedCount.value = 0;
           appointmentCount.value = 0;
 
-          uni.showToast({ title: '退出成功', icon: 'success' });
+          uni.showToast({ title: '退出成功', icon: 'none' });
           setTimeout(() => {
             uni.reLaunch({
               url: '/pages/auth/login'

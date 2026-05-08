@@ -13,6 +13,21 @@ export interface RequestError extends Error {
   msg?: string;
 }
 
+const getErrorToastMessage = (code: number, url: string, msg?: string) => {
+  switch (code) {
+    case 401:
+      return '登录状态已失效，请重新登录';
+    case 403:
+      return url === '/auth/login' ? '账号已锁定' : '无权操作';
+    case 429:
+      return '操作太快了，请稍后再试';
+    case 500:
+      return '服务器开小差了，请稍后重试';
+    default:
+      return msg || '请求失败';
+  }
+};
+
 const createRequestError = (code: number, msg: string): RequestError => {
   const error = new Error(msg) as RequestError;
   error.code = code;
@@ -44,25 +59,27 @@ export const request = <T = any>(
       timeout: 10000,
       success: (res: any) => {
         const responseData = res.data as HttpResponse<T>;
+        const responseCode = Number(responseData.code || res.statusCode || 500);
+        const toastMessage = getErrorToastMessage(responseCode, url, responseData.msg);
 
-        if (responseData.code === 200) {
+        if (responseCode === 200) {
           resolve(responseData);
           return;
         }
 
-        if (responseData.code === 401) {
+        if (responseCode === 401) {
           // Token 无效或过期，清理登录态并跳回登录页
           uni.removeStorageSync('token');
-          uni.showToast({ title: '认证过期，请重新登录', icon: 'none' });
+          uni.showToast({ title: toastMessage, icon: 'none' });
           setTimeout(() => {
             uni.reLaunch({ url: '/pages/auth/login' });
           }, 1500);
-          reject(createRequestError(401, responseData.msg || 'Unauthorized'));
+          reject(createRequestError(401, toastMessage));
           return;
         }
 
-        uni.showToast({ title: responseData.msg || '请求失败', icon: 'none' });
-        reject(createRequestError(responseData.code, responseData.msg || 'Request failed'));
+        uni.showToast({ title: toastMessage, icon: 'none' });
+        reject(createRequestError(responseCode, toastMessage));
       },
       fail: (err) => {
         uni.showToast({ title: '网络通信错误', icon: 'none' });

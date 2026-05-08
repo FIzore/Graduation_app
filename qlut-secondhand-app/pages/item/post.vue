@@ -99,6 +99,7 @@ import { computed, ref, reactive } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
 import { uploadImage, createItem } from '../../api/item';
 import { IMAGE_BASE_URL } from '../../config';
+import type { RequestError } from '../../utils/request';
 
 const serverUrl = IMAGE_BASE_URL;
 
@@ -201,7 +202,7 @@ const handlePublish = async () => {
     };
     
     await createItem(payload);
-    uni.showToast({ title: '发布成功', icon: 'success' });
+    uni.showToast({ title: '发布成功', icon: 'none' });
     
     // 延时返回首页
     setTimeout(() => {
@@ -210,6 +211,12 @@ const handlePublish = async () => {
       });
     }, 1500);
   } catch (err) {
+    const requestError = err as RequestError;
+    if (requestError.code === 403) {
+      uni.showToast({ title: requestError.msg || requestError.message || '发布内容不符合规范', icon: 'none' });
+      return;
+    }
+
     console.error('发布失败', err);
   } finally {
     isPublishing.value = false;

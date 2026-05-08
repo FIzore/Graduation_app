@@ -204,7 +204,6 @@ WebSocket 底层通信引擎基建完成：
 
 **目标**：状态共享层 + `pages/message/message.vue` 重构为最近联系人列表。
 
-
 0.8.3
 WebSocket 聊天室核心 UI 与实时收发完成：
 
@@ -215,7 +214,6 @@ WebSocket 聊天室核心 UI 与实时收发完成：
 - **UI 规范**：`pages.json` 中 `message` 页面启用 `navigationStyle: custom`，消除原生与自定义双标题叠加
 - **紧急修复**：解决 `detail.vue` WXSS 编译错误 — 移除 Flex `gap` 属性（替换为相邻兄弟 `margin-left` 选择器）、将 `.chat-btn-text` 从 SCSS 嵌套中提取为扁平独立规则
 
-
 0.8.4
 WebSocket 历史消息缝合与细节打磨：
 
@@ -224,7 +222,6 @@ WebSocket 历史消息缝合与细节打磨：
 - **下拉翻页**：`@scrolltoupper` 触发 `loadMoreHistory`，递增 `historyPage` 加载更早记录，预置 `noMoreHistory` 终止标记
 - **去重校验**：维护 `loadedMsgKeys: Set<string>`（`fromId-toId-content-createdAt` 签名），WS 实时消息在 push 前校验签名是否已存在，消除历史/实时边界处的重复渲染
 - **会话列表打磨**：`message.vue` 时间格式化升级 — 今天显示 `HH:mm`、昨天显示 `昨天`、更早显示 `MM-DD`；排序保持 `lastTime` 倒序
-
 
 0.9.2
 搜索功能闭环与安全区适配：
@@ -237,7 +234,6 @@ WebSocket 历史消息缝合与细节打磨：
 - **契约对齐**：`api/item.ts` 的 `createAppointment` 参数 `item_id` → `itemId`；`getChatHistory` 参数 `target_id/page_size` → `targetId/pageSize`；ChatHistoryResponse 响应结构匹配后端直接数组格式
 - **一物一聊架构**：`conversationStore` 密钥改为 `${otherId}_${itemId}` 组合键，Conversation 新增 `itemId/itemTitle/itemCover`，聊天室发送时主动回写 sender 侧会话列表，消息列表展示物品标签
 
-
 0.9.3
 协议同步与聊天室上下文锚点实装：
 
@@ -246,14 +242,12 @@ WebSocket 历史消息缝合与细节打磨：
 - **行为埋点**：`api/item.ts` 新增 `reportBehaviors()`，详情页加载成功后静默上报 `view` 行为；同时增加本地 `token` 守卫，未登录用户不再触发 `/behaviors` 请求，修复了 401 全局重定向导致的详情页误跳登录 Bug
 - **工程化**：`utils/request.ts` 引入结构化 `RequestError`，统一封装 `code / msg` 错误上下文，提升后续登录、风控、限流等错误分支的可维护性
 
-
 0.9.4
 发布端分类能力实装：
 
 - **发布增强**：`pages/item/post.vue` 增加物品分类选择能力，支持图书、电子产品、生活用品、体育器材、其他 5 大核心预设分类
 - **契约对齐**：`api/item.ts` 为 `createItem` 补齐 `CreateItemPayload`，发布上行链路正式携带 camelCase 的 `category` 字段与后端 v0.24 对齐
 - **表单校验**：发布前新增分类必选拦截，用户未选择分类时明确提示“请选择物品分类”，防止产生无分类物品数据
-
 
 0.9.5
 首页分类筛选 UI 实装：
@@ -263,10 +257,46 @@ WebSocket 历史消息缝合与细节打磨：
 - **状态管理**：完成分类切换时的四重重置逻辑，严格执行 `page = 1`、`noMore = false`、`items = []`、重新 `fetchItems()`，并保证下拉刷新继续携带当前分类上下文
 - **契约对齐**：`api/item.ts` 正式启用 `GetItemsParams`，`getItems` 支持 `category` 参数透传；“全部”分类请求时传空字符串，分类 key 与发布端保持 `book/digital/daily/sports/other` 一致
 
-
 0.9.6
 安全登出逻辑与 WebSocket 状态重置：
 
 - **安全增强**：`api/user.ts` 实装 `POST /auth/logout`，并与后端 Token 黑名单机制联动，确保退出后令牌立即失效
 - **状态隔离**：`store/conversation.ts` 完成 `reset()` 深度清空逻辑，退出后彻底移除会话列表并重置缓存用户 ID，杜绝换号登录造成的数据污染
 - **WS 优化**：`utils/websocket.ts` 实装 `ws.close()` 手动关闭机制，退出时清理重连定时器、重置重连计数并清空待发送队列，彻底解决登出后后台重连的资源浪费问题
+
+0.9.8
+契约清账与滚动稳定性收口：
+
+- **契约统一**：首页、详情、搜索、个人中心、我的发布、我的预约等核心页面完成 camelCase 收敛，清理历史大写字段与 snake_case 页面层兜底
+- **埋点去冗余**：详情页移除前端主动 `view` 行为上报，统一交由后端 `GET /items/:id` 自动埋点处理，避免重复写入行为表
+- **资产接口接管**：个人中心统计与“我的发布”列表正式切换到 `GET /user/items`，废弃全量 `getItems` + 本地过滤方案，并增强对数组 / `items` / `list` / `data` 结构的防御性解构
+- **认证提示补齐**：注册分支精准捕获 `409 Conflict`，新增“该学号已注册”定制提示
+- **Scroll-View 底层修复**：针对首页与搜索页下拉卡死问题，补齐 `loading` 早退状态回收、`@refresherrestore` 原生兜底、延迟复位与滚动容器高度约束，彻底修复 Uni-app 刷新状态机死锁
+
+0.9.9
+首页推荐流融合与多级降级实装：
+
+- **推荐流接管**：`api/item.ts` 新增 `getIndexRecommend()`，首页默认数据流从 `GET /items` 切换为 `GET /index/recommend`，正式消费后端 `OptionalAuth()` 推荐接口
+- **双轨路由**：首页形成“推荐模式 / 分类模式”双轨数据流；`all` 分类走推荐接口，`book/digital/daily/sports/other` 具体分类回退到 `GET /items`，避免臆造推荐接口的 `category` 参数
+- **推荐说明 UI**：在分类 Tab 下方新增轻量推荐说明条，分别承载登录态“根据你的浏览与想要记录为你推荐”、匿名态“当前为最新上架，登录后可体验个性化推荐”以及分类态/降级态的上下文提示
+- **多级容灾降级**：推荐接口失败时不再静默混入 Mock 数据，而是显式展示“推荐引擎正在升级中”的降级说明，并按“推荐流 -> 基础在售流 -> 本地兜底”的顺序逐级回退
+- **单次流分页修正**：针对 `/index/recommend` 当前为 Top20 单次流的特性，修正首页触底分页逻辑；推荐模式成功后直接 `noMore = true`，仅在分类模式或推荐失败回退基础流时继续使用普通分页追加，杜绝重复拼接推荐卡片
+
+0.9.8.1
+AI 风控 UX 与 IM 上下文契约补强：
+
+- **注册提示细化**：`pages/auth/login.vue` 的注册分支将 `409 Conflict` 提示升级为“该学号已被注册，请直接登录或联系管理员”，与后端真实语义完全对齐
+- **风控错误透传**：`pages/item/post.vue` 在发布失败时新增页面级 `403` 分流，优先展示后端透传的违规原因，避免被全局“无权操作”提示覆盖
+- **一物一聊收口**：`api/chat.ts` 将 `getChatHistory()` 的 `itemId` 改为必传参数，`pages/chat/room.vue` 同步强制校验聊天上下文，缺少 `itemId` 时直接阻断并返回，避免命中后端 400
+- **埋点复核**：再次核对 `pages/item/detail.vue`，确认前端主动 `view` 上报已不存在，详情浏览埋点唯一入口保持为后端 `GET /items/:id`
+
+0.9.8.2
+
+v0.9.8.2 这轮目标里的 4 个点已经落地：
+
+* 详情页 `view` 双写风险：已确认清除
+* 注册 `409` 精细提示：已完成
+* 发布页 AI 风控 `403` 专属反馈：已完成
+* 聊天历史 `itemId` 必传契约：已完成
+
+1.0

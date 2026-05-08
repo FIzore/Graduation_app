@@ -17,21 +17,21 @@
           @click="goToDetail(getItemId(app))"
         >
           <view class="card-header">
-            <text class="time">交接时间: {{ formatTime(app.AppointmentTime || app.appointment_time || app.CreatedAt || app.created_at) }}</text>
-            <text class="status" :class="'status-' + (app.Status || app.status)">
-              {{ statusMap(app.Status ?? app.status) }}
+            <text class="time">交接时间: {{ formatTime(app.createdAt) }}</text>
+            <text class="status" :class="'status-' + app.status">
+              {{ statusMap(app.status) }}
             </text>
           </view>
 
           <view class="card-body">
             <image class="card-img" :src="getAppointmentCover(app)" mode="aspectFill"></image>
             <view class="card-info">
-              <text class="card-title">{{ getItemEntity(app).Title || getItemEntity(app).title || '未命名物品' }}</text>
-              <text class="card-price">¥ {{ getItemEntity(app).Price || getItemEntity(app).price || '0.00' }}</text>
+              <text class="card-title">{{ getItemEntity(app).title || '未命名物品' }}</text>
+              <text class="card-price">¥ {{ getItemEntity(app).price || '0.00' }}</text>
             </view>
           </view>
 
-          <view class="card-footer" v-if="(app.Status || app.status) == 1" @click.stop="">
+          <view class="card-footer" v-if="app.status === 1" @click.stop="">
             <view class="confirm-btn" @click.stop.prevent="handleConfirm(app)">
               <text>确认交接</text>
             </view>
@@ -53,7 +53,22 @@ import { onShow } from '@dcloudio/uni-app';
 import { getMyAppointments, confirmAppointment } from '../../api/item';
 import { IMAGE_BASE_URL } from '../../config';
 
-const list = ref<any[]>([]);
+interface AppointmentItem {
+  id: number;
+  title: string;
+  price: number;
+  images: string[];
+}
+
+interface AppointmentRecord {
+  id: number;
+  createdAt: string;
+  itemId: number;
+  item: AppointmentItem;
+  status: number;
+}
+
+const list = ref<AppointmentRecord[]>([]);
 const loading = ref(false);
 const confirming = ref(false);
 
@@ -92,28 +107,28 @@ const parseImages = (raw: any): string[] => {
   return [];
 };
 
-const getItemEntity = (app: any) => {
-  return app?.item || app?.Item || {};
+const getItemEntity = (app: AppointmentRecord) => {
+  return app.item;
 };
 
-const getItemId = (app: any) => {
+const getItemId = (app: AppointmentRecord) => {
   const item = getItemEntity(app);
-  return item.ID || item.id;
+  return item.id;
 };
 
-const getAppointmentId = (app: any) => {
-  return app.ID || app.id;
+const getAppointmentId = (app: AppointmentRecord) => {
+  return app.id;
 };
 
-const getAppointmentCover = (app: any) => {
+const getAppointmentCover = (app: AppointmentRecord) => {
   const item = getItemEntity(app);
-  const images = parseImages(item.Images ?? item.images);
+  const images = parseImages(item.images);
   return formatImage(images[0]);
 };
 
 const formatTime = (timeStr: string | undefined) => {
   if (!timeStr) return '待定或尽快交接';
-  const d = new Date(timeStr);
+  const d = new Date(timeStr.replace(/-/g, '/'));
   if (Number.isNaN(d.getTime())) return timeStr;
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 };
@@ -131,11 +146,9 @@ const statusMap = (status: number | string | undefined): string => {
   }
 };
 
-const extractAppointments = (raw: any): any[] => {
+const extractAppointments = (raw: AppointmentRecord[] | { appointments?: AppointmentRecord[] } | undefined): AppointmentRecord[] => {
   if (Array.isArray(raw)) return raw;
   if (Array.isArray(raw?.appointments)) return raw.appointments;
-  if (Array.isArray(raw?.list)) return raw.list;
-  if (Array.isArray(raw?.data)) return raw.data;
   return [];
 };
 
@@ -153,7 +166,7 @@ const loadAppointments = async () => {
   }
 };
 
-const handleConfirm = (app: any) => {
+const handleConfirm = (app: AppointmentRecord) => {
   const id = getAppointmentId(app);
   if (!id || confirming.value) return;
 
@@ -165,7 +178,7 @@ const handleConfirm = (app: any) => {
         confirming.value = true;
         try {
           await confirmAppointment(id);
-          uni.showToast({ title: '交接确认成功', icon: 'success' });
+          uni.showToast({ title: '交接确认成功', icon: 'none' });
           await loadAppointments();
         } catch (e) {
           console.error('确认交接失败', e);
