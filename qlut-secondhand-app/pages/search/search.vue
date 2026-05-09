@@ -88,7 +88,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
-import { getItems, type Item } from '../../api/item';
+import { getItems, reportBehaviors, type Item } from '../../api/item';
 import { IMAGE_BASE_URL } from '../../config';
 
 const HISTORY_KEY = 'searchHistory';
@@ -221,6 +221,9 @@ const fetchResults = async (reset = false) => {
       resultItems.value = items;
     } else {
       resultItems.value = [...resultItems.value, ...items];
+    }
+    if (reset && items.length > 0) {
+      reportBehaviors([{ behaviorType: 'search', searchQuery: keyword.value.trim() }]).catch(() => {});
     }
     if (items.length < PAGE_SIZE) noMore.value = true;
   } catch (e) {

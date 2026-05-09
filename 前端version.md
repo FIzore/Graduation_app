@@ -319,3 +319,10 @@ v0.9.8.2 这轮目标里的 4 个点已经落地：
 **结果**
 
 * 后端返回类似 `发布内容命中高风险规则`、`发布内容包含违规词汇` 的 `403 msg` 时，前端现在会直接展示这条真实原因，不再被“无权操作”覆盖。
+
+1.0.1
+核心行为埋点全量闭环 (NCF 数据源准备)：
+
+- **“想要/收藏”交互实装**：`pages/item/detail.vue` 底部栏左侧新增红心收藏按钮，点击切换已收藏/未收藏状态，通过 `favoriting` 防抖锁防止连点重复上报，状态持久化至 localStorage
+- **搜索行为归因实装**：`pages/search/search.vue` 首次搜索成功且有结果时，静默上报 `search` 行为埋点（`POST /behaviors`），分页加载更多和下拉刷新不会重复上报
+- **契约对齐**：调用 `reportBehaviors` 均使用 camelCase（`itemId`/`behaviorType`/`searchQuery`），与 `BehaviorPayload` 接口严格对齐

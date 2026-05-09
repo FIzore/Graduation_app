@@ -31,6 +31,9 @@
     </view>
 
     <view class="bottom-bar">
+      <view class="fav-btn" v-if="!isSelf" @click="toggleFavorite">
+        <uni-icons :type="isFavorited ? 'heart-filled' : 'heart'" size="24" :color="isFavorited ? '#ff4d4f' : '#ccc'"></uni-icons>
+      </view>
       <view class="action-btn-group">
         <button v-if="!isSelf" class="chat-btn" @click="goToChat">
           <uni-icons type="chat" size="22" color="#fff"></uni-icons>
@@ -60,7 +63,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
-import { getItemDetail, createAppointment, type Item } from '../../api/item';
+import { getItemDetail, createAppointment, reportBehaviors, type Item } from '../../api/item';
 import { IMAGE_BASE_URL } from '../../config';
 import { conversationStore } from '../../store/conversation';
 
@@ -68,6 +71,8 @@ type DetailItem = Item & { nickname?: string };
 
 const item = ref<DetailItem | null>(null);
 const reserving = ref(false);
+const isFavorited = ref(false);
+const favoriting = ref(false);
 const serverUrl = IMAGE_BASE_URL;
 
 const parseImages = (raw: any): string[] => {
@@ -127,6 +132,7 @@ const onLoadHandler = async (options: any) => {
   try {
     const res = await getItemDetail(id);
     item.value = res.data;
+    isFavorited.value = !!uni.getStorageSync(`fav_${id}`);
   } catch (error) {
     console.error('获取详情失败:', error);
   }
@@ -161,6 +167,26 @@ const handleReserve = async () => {
     console.error('预约失败:', error);
   } finally {
     reserving.value = false;
+  }
+};
+
+const toggleFavorite = async () => {
+  if (!item.value || favoriting.value) return;
+  favoriting.value = true;
+  try {
+    const iid = itemId.value;
+    const newState = !isFavorited.value;
+    isFavorited.value = newState;
+    if (newState) {
+      uni.setStorageSync(`fav_${iid}`, '1');
+    } else {
+      uni.removeStorageSync(`fav_${iid}`);
+    }
+    await reportBehaviors([{ itemId: iid, behaviorType: 'favorite' }]);
+  } catch (e) {
+    console.error('收藏上报失败:', e);
+  } finally {
+    favoriting.value = false;
   }
 };
 
@@ -297,6 +323,11 @@ const formatTime = (time: any) => {
   font-size: 28rpx;
   color: #666;
   line-height: 1.6;
+}
+
+.fav-btn {
+  margin-right: 20rpx;
+  padding: 10rpx;
 }
 
 .bottom-bar {
