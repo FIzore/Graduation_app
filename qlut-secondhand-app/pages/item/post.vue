@@ -89,7 +89,7 @@
     <!-- FAB 悬浮发布按鈕 -->
     <view class="fab-publish-btn" @click="handlePublish">
       <text v-if="!isPublishing">发布</text>
-      <text v-else>发布中...</text>
+      <text v-else>AI 正在识别图片与校验内容...</text>
     </view>
   </view>
 </template>
@@ -201,8 +201,17 @@ const handlePublish = async () => {
       category: formData.category
     };
     
-    await createItem(payload);
-    uni.showToast({ title: '发布成功', icon: 'none' });
+    const res = await createItem(payload);
+    const finalCategory = res.data?.category || res.data?.aiCategory;
+    if (finalCategory) {
+      if (finalCategory !== formData.category) {
+        uni.showToast({ title: '分类已由 AI 智能修正', icon: 'none' });
+      } else {
+        uni.showToast({ title: '已沿用您的分类', icon: 'none' });
+      }
+    } else {
+      uni.showToast({ title: 'AI 审核通过，发布成功', icon: 'none' });
+    }
     
     // 延时返回首页
     setTimeout(() => {
