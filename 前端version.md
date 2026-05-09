@@ -320,9 +320,10 @@ v0.9.8.2 这轮目标里的 4 个点已经落地：
 
 * 后端返回类似 `发布内容命中高风险规则`、`发布内容包含违规词汇` 的 `403 msg` 时，前端现在会直接展示这条真实原因，不再被“无权操作”覆盖。
 
+
 1.0.1
 核心行为埋点全量闭环 (NCF 数据源准备)：
 
-- **“想要/收藏”交互实装**：`pages/item/detail.vue` 底部栏左侧新增红心收藏按钮，点击切换已收藏/未收藏状态，通过 `favoriting` 防抖锁防止连点重复上报，状态持久化至 localStorage
-- **搜索行为归因实装**：`pages/search/search.vue` 首次搜索成功且有结果时，静默上报 `search` 行为埋点（`POST /behaviors`），分页加载更多和下拉刷新不会重复上报
-- **契约对齐**：调用 `reportBehaviors` 均使用 camelCase（`itemId`/`behaviorType`/`searchQuery`），与 `BehaviorPayload` 接口严格对齐
+- **收藏交互实装**：pages/item/detail.vue 底部操作栏新增收藏按钮，支持红心/灰心状态切换，点击时调用 POST /behaviors 上报 favorite 行为；内置 favoriting 防抖锁与 localStorage 持久化
+- **搜索归因补齐**：pages/search/search.vue 在首次搜索返回结果后自动静默上报 search 行为携带 searchQuery 关键词，分页加载与下拉刷新不会重复上报
+- **数据燃料就绪**：至此 NCF 推荐算法所需的 view（后端自动）、favorite、search 三类行为埋点已全部闭环
