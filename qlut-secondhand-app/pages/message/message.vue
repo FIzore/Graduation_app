@@ -1,6 +1,6 @@
 ﻿<template>
   <view class="container">
-    <view class="header">
+    <view class="header" :style="{ paddingTop: navMetrics.paddingTop + 'px', paddingRight: navMetrics.paddingRight + 'px' }">
       <text class="title">消息</text>
     </view>
 
@@ -51,9 +51,11 @@
 import { computed } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
 import { conversationStore } from '../../store/conversation';
+import { getCustomNavMetrics } from '../../utils/navigation';
 import CustomTabbar from '../../components/custom-tabbar.vue';
 
 const store = conversationStore;
+const navMetrics = getCustomNavMetrics();
 
 const sortedList = computed(() => {
   return Object.values(store.conversations).sort((a, b) => {
@@ -105,7 +107,7 @@ onShow(() => {
 }
 
 .header {
-  padding: calc(var(--status-bar-height) + 20rpx) 30rpx 20rpx;
+  padding: 20rpx 30rpx 20rpx;
   background-color: #fff;
   border-bottom: 1rpx solid #eee;
 

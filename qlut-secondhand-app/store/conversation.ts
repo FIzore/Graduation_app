@@ -62,7 +62,7 @@ export const conversationStore = reactive<ConversationStore>({
   conversations: {},
 
   get unreadTotal() {
-    return Object.values(this.conversations).reduce((sum, c) => sum + c.unreadCount, 0);
+    return (Object.values(this.conversations) as Conversation[]).reduce((sum, c) => sum + c.unreadCount, 0);
   },
 
   updateConversation(msg: any) {

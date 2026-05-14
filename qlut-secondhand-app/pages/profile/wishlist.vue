@@ -1,10 +1,10 @@
-﻿<template>
+<template>
   <view class="container">
     <view class="header" :style="{ paddingTop: navMetrics.paddingTop + 'px', paddingRight: navMetrics.paddingRight + 'px' }">
       <view class="back-box" @click="goBack">
         <uni-icons type="back" size="24" color="#333"></uni-icons>
       </view>
-      <text class="title">我的个人发布</text>
+      <text class="title">我想要的</text>
       <view class="placeholder"></view>
     </view>
 
@@ -16,18 +16,18 @@
       @refresherrefresh="onRefresh"
       @refresherrestore="onRestore"
     >
-      <view v-if="publishedItems.length > 0" class="list-wrapper">
+      <view v-if="wishlistItems.length > 0" class="list-wrapper">
         <view
           class="item-card"
-          v-for="(item, idx) in publishedItems"
-          :key="idx"
+          v-for="item in wishlistItems"
+          :key="item.id"
           @click="goToDetail(item.id)"
         >
           <image class="card-img" :src="getItemCover(item)" mode="aspectFill"></image>
           <view class="card-info">
-            <text class="card-title">{{ item.title }}</text>
+            <text class="card-title">{{ item.title || '未命名物品' }}</text>
             <view class="card-bottom">
-              <text class="card-price">¥ {{ item.price }}</text>
+              <text class="card-price">¥ {{ item.price || '0.00' }}</text>
               <text class="card-status" :class="'status-' + item.status">
                 {{ formatStatus(item.status) }}
               </text>
@@ -36,9 +36,9 @@
         </view>
       </view>
 
-      <view v-if="publishedItems.length === 0" class="empty-state">
+      <view v-if="wishlistItems.length === 0" class="empty-state">
         <image src="/static/empty.png" mode="aspectFit" class="empty-img"></image>
-        <text class="empty-text">暂无发布的物品</text>
+        <text class="empty-text">暂无想要的物品</text>
       </view>
     </scroll-view>
   </view>
@@ -47,11 +47,20 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
-import { getMyItems, type Item, type UserItemListResponse } from '../../api/item';
 import { getFirstImageUrl } from '../../utils/image';
 import { getCustomNavMetrics } from '../../utils/navigation';
 
+interface WishlistItem {
+  id: number;
+  title: string;
+  price: number | string;
+  images: unknown;
+  status?: string;
+}
+
 const navMetrics = getCustomNavMetrics();
+const wishlistItems = ref<WishlistItem[]>([]);
+const refresherTriggered = ref(false);
 
 const goBack = () => {
   uni.navigateBack();
@@ -62,11 +71,7 @@ const goToDetail = (id: number | string | undefined) => {
   uni.navigateTo({ url: `/pages/item/detail?id=${id}` });
 };
 
-const publishedItems = ref<Item[]>([]);
-const loading = ref(false);
-const refresherTriggered = ref(false);
-
-const getItemCover = (item: Item) => {
+const getItemCover = (item: WishlistItem) => {
   return getFirstImageUrl(item.images);
 };
 
@@ -75,27 +80,39 @@ const formatStatus = (status: string | undefined) => {
   if (s === 'onsale') return '在售';
   if (s === 'pending') return '锁定中';
   if (s === 'completed') return '已交接';
-  return '未知';
+  return '已收藏';
 };
 
-const extractItems = (raw: Item[] | UserItemListResponse | undefined): Item[] => {
-  if (Array.isArray(raw)) return raw;
-  if (Array.isArray(raw?.items)) return raw.items;
-  if (Array.isArray(raw?.list)) return raw.list;
-  if (Array.isArray(raw?.data)) return raw.data;
-  return [];
-};
-
-const loadPublishedItems = async () => {
-  loading.value = true;
+const loadWishlist = () => {
   try {
-    const itemsRes = await getMyItems().catch(() => ({ data: [] as Item[] }));
-    publishedItems.value = extractItems(itemsRes.data);
-  } catch (e) {
-    console.error('加载发布物品失败', e);
-    publishedItems.value = [];
+    const storageInfo = uni.getStorageInfoSync();
+    const items = storageInfo.keys
+      .filter((key) => key.startsWith('fav_'))
+      .map((key) => {
+        const id = Number(key.replace('fav_', ''));
+        const raw = uni.getStorageSync(key);
+        if (typeof raw === 'string' && raw.startsWith('{')) {
+          try {
+            const parsed = JSON.parse(raw);
+            return {
+              id: Number(parsed?.id || id),
+              title: String(parsed?.title || '已收藏物品'),
+              price: parsed?.price ?? '0.00',
+              images: parsed?.images || [],
+              status: parsed?.status,
+            };
+          } catch {
+            return { id, title: '已收藏物品', price: '0.00', images: [] };
+          }
+        }
+        return { id, title: '已收藏物品', price: '0.00', images: [] };
+      })
+      .filter((item) => item.id > 0);
+
+    wishlistItems.value = items;
+  } catch {
+    wishlistItems.value = [];
   } finally {
-    loading.value = false;
     refresherTriggered.value = false;
     uni.stopPullDownRefresh();
   }
@@ -103,7 +120,7 @@ const loadPublishedItems = async () => {
 
 const onRefresh = () => {
   refresherTriggered.value = true;
-  loadPublishedItems();
+  loadWishlist();
 };
 
 const onRestore = () => {
@@ -111,7 +128,7 @@ const onRestore = () => {
 };
 
 onShow(() => {
-  loadPublishedItems();
+  loadWishlist();
 });
 </script>
 
@@ -154,11 +171,6 @@ onShow(() => {
   min-height: 0;
   padding: 20rpx;
   box-sizing: border-box;
-}
-
-.list-wrapper {
-  display: flex;
-  flex-direction: column;
 }
 
 .item-card {
@@ -212,24 +224,6 @@ onShow(() => {
         border-radius: 8rpx;
         background-color: #f0f0f0;
         color: #666;
-
-        &.status-1,
-        &.status-OnSale {
-          background-color: #e6f7ff;
-          color: #1890ff;
-        }
-
-        &.status-2,
-        &.status-Pending {
-          background-color: #fff7e6;
-          color: #fa8c16;
-        }
-
-        &.status-3,
-        &.status-Completed {
-          background-color: #f6ffed;
-          color: #52c41a;
-        }
       }
     }
   }
@@ -254,4 +248,3 @@ onShow(() => {
   }
 }
 </style>
-

@@ -1,6 +1,7 @@
 import { WS_URL } from '../config';
+import { reactive } from 'vue';
 
-type EventType = 'open' | 'close' | 'error' | 'message';
+type EventType = 'open' | 'close' | 'error' | 'message' | 'status';
 type EventCallback = (...args: any[]) => void;
 
 const BASE_DELAY = 1000;
@@ -26,6 +27,21 @@ const state: WsState = {
   listeners: new Map(),
 };
 
+const publicStatus = reactive({
+  connected: false,
+  reconnecting: false,
+  pendingCount: 0,
+  retryCount: 0,
+});
+
+function syncStatus() {
+  publicStatus.connected = state.connected;
+  publicStatus.reconnecting = state.retryTimer !== null;
+  publicStatus.pendingCount = state.pendingQueue.length;
+  publicStatus.retryCount = state.retryCount;
+  emit('status', { ...publicStatus });
+}
+
 function emit(event: EventType, ...args: any[]) {
   const handlers = state.listeners.get(event);
   if (handlers) {
@@ -49,6 +65,7 @@ function flushQueue() {
     const msg = state.pendingQueue.shift()!;
     state.socket.send({ data: msg });
   }
+  syncStatus();
 }
 
 function scheduleReconnect() {
@@ -61,8 +78,10 @@ function scheduleReconnect() {
   state.retryTimer = setTimeout(() => {
     state.retryTimer = null;
     state.retryCount++;
+    syncStatus();
     connect();
   }, delay);
+  syncStatus();
 }
 
 function bindSocketEvents(socket: UniApp.SocketTask) {
@@ -71,6 +90,7 @@ function bindSocketEvents(socket: UniApp.SocketTask) {
     state.connected = true;
     state.retryCount = 0;
     flushQueue();
+    syncStatus();
     emit('open');
   });
 
@@ -92,6 +112,7 @@ function bindSocketEvents(socket: UniApp.SocketTask) {
     console.log(`[WS] closed (code: ${res.code}, reason: ${res.reason})`);
     state.connected = false;
     state.socket = null;
+    syncStatus();
     emit('close', res);
 
     if (!state.manualClose) {
@@ -104,6 +125,7 @@ function connect(): void {
   const token = uni.getStorageSync('token');
   if (!token) {
     console.warn('[WS] no token — skip connect');
+    syncStatus();
     return;
   }
 
@@ -127,6 +149,7 @@ function connect(): void {
   });
 
   state.socket = socket;
+  syncStatus();
   bindSocketEvents(socket);
 }
 
@@ -150,6 +173,7 @@ function close(): void {
   state.connected = false;
   state.retryCount = 0;
   state.pendingQueue = [];
+  syncStatus();
 }
 
 function on(event: EventType, callback: EventCallback): void {
@@ -170,9 +194,10 @@ function send(data: Record<string, unknown>): void {
   } else {
     console.log('[WS] queued pending message');
     state.pendingQueue.push(json);
+    syncStatus();
   }
 }
 
 export function useWebSocket() {
-  return { connect, disconnect, close, on, off, send };
+  return { connect, disconnect, close, on, off, send, status: publicStatus };
 }

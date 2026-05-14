@@ -111,6 +111,13 @@ export const confirmAppointment = (id: number) => {
 };
 
 /**
+ * 取消预约交接
+ */
+export const cancelAppointment = (id: number) => {
+  return request(`/appointments/${id}/cancel`, 'PUT');
+};
+
+/**
  * 单图上传
  * 使用原生 uni.uploadFile，并封装为 Promise
  */

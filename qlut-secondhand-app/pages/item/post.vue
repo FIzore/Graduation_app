@@ -1,7 +1,7 @@
 <template>
   <view class="post-container">
     <!-- 自定义导航栏 -->
-    <view class="custom-nav">
+    <view class="custom-nav" :style="{ paddingTop: navMetrics.paddingTop + 'px', paddingRight: navMetrics.paddingRight + 'px' }">
       <view class="nav-back" @click="handleCancel">
         <text class="nav-cancel">取消</text>
       </view>
@@ -98,10 +98,11 @@
 import { computed, ref, reactive } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
 import { uploadImage, createItem } from '../../api/item';
-import { IMAGE_BASE_URL } from '../../config';
+import { formatImageUrl as normalizeImageUrl } from '../../utils/image';
+import { getCustomNavMetrics } from '../../utils/navigation';
 import type { RequestError } from '../../utils/request';
 
-const serverUrl = IMAGE_BASE_URL;
+const navMetrics = getCustomNavMetrics();
 
 const categoryOptions = [
   { value: 'book', label: '图书' },
@@ -116,6 +117,7 @@ onShow(() => {
 });
 
 const isPublishing = ref(false);
+const uploadingCount = ref(0);
 const formData = reactive({
   title: '',
   content: '',
@@ -137,17 +139,25 @@ const chooseImg = () => {
     count: 6 - formData.images.length,
     sizeType: ['compressed'],
     success: async (res) => {
-      uni.showLoading({ title: '上传图片中...' });
+      const paths = (res.tempFilePaths as string[]);
+      if (!paths.length) return;
+      uploadingCount.value = 0;
+      uni.showLoading({ title: `上传 0/${paths.length}` });
       try {
-        const paths = (res.tempFilePaths as string[]);
-        const uploadPromises = paths.map((path: string) => uploadImage(path));
-        const urls = await Promise.all(uploadPromises);
-        formData.images.push(...urls);
+        const urls: string[] = [];
+        for (const path of paths) {
+          const url = await uploadImage(path);
+          urls.push(url);
+          uploadingCount.value += 1;
+          uni.showLoading({ title: `上传 ${uploadingCount.value}/${paths.length}` });
+        }
+        formData.images.push(...urls.filter(Boolean));
       } catch (e) {
         console.error('上传失败', e);
-        uni.showToast({ title: '图片上传失败，请重试', icon: 'none' });
+        uni.showToast({ title: `图片上传失败，请重试 (${uploadingCount.value}/${paths.length})`, icon: 'none' });
       } finally {
         uni.hideLoading();
+        uploadingCount.value = 0;
       }
     }
   });
@@ -166,8 +176,7 @@ const handleCategoryChange = (e: any) => {
 };
 
 const formatImageUrl = (path: string) => {
-  if (!path) return '/static/default.png';
-  return path.startsWith('http') ? path : serverUrl + path;
+  return normalizeImageUrl(path);
 };
 
 const previewImage = (index: number) => {
@@ -247,12 +256,10 @@ const handlePublish = async () => {
 
 .custom-nav {
   height: 88rpx;
-  padding-top: var(--status-bar-height);
   background-color: #fff;
   display: flex;
   align-items: center;
   padding-left: 30rpx;
-  padding-right: 30rpx;
   
   .nav-back {
     width: 100rpx; // 和右侧占位宽度对称
@@ -288,13 +295,14 @@ const handlePublish = async () => {
   .image-grid {
     display: flex;
     flex-wrap: wrap;
-    gap: 20rpx;
+    margin: -10rpx;
   }
   
   .image-item {
     position: relative;
-    width: calc((100% - 40rpx) / 3);
+    width: calc((100% - 60rpx) / 3);
     height: 200rpx;
+    margin: 10rpx;
     
     .img-preview {
       width: 100%;
@@ -317,8 +325,9 @@ const handlePublish = async () => {
   }
   
   .upload-btn {
-    width: calc((100% - 40rpx) / 3);
+    width: calc((100% - 60rpx) / 3);
     height: 200rpx;
+    margin: 10rpx;
     border: 2rpx dashed #ddd;
     border-radius: 12rpx;
     background-color: #fafafa;

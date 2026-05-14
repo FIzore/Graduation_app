@@ -89,7 +89,7 @@
 import { ref } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
 import { getItems, reportBehaviors, type Item } from '../../api/item';
-import { IMAGE_BASE_URL } from '../../config';
+import { getFirstImageUrl } from '../../utils/image';
 
 const HISTORY_KEY = 'searchHistory';
 const PAGE_SIZE = 20;
@@ -136,27 +136,7 @@ const saveHistory = (kw: string) => {
   uni.setStorageSync(HISTORY_KEY, JSON.stringify(arr));
 };
 
-const parseImages = (raw: any): string[] => {
-  if (Array.isArray(raw)) return raw.filter(Boolean);
-  if (typeof raw === 'string') {
-    const text = raw.trim();
-    if (!text) return [];
-    if (text.startsWith('[')) {
-      try { return JSON.parse(text).filter(Boolean); } catch { return []; }
-    }
-    return [text];
-  }
-  return [];
-};
-
-const getItemCover = (item: Item) => {
-  const images = parseImages(item.images);
-  const first = images[0];
-  if (!first) return '/static/default.png';
-  if (first.startsWith('http')) return first;
-  if (first.startsWith('/uploads')) return IMAGE_BASE_URL + first;
-  return IMAGE_BASE_URL + '/' + first;
-};
+const getItemCover = (item: Item) => getFirstImageUrl(item.images);
 
 const doSearch = () => {
   const kw = keyword.value.trim();

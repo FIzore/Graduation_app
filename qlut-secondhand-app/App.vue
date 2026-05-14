@@ -4,14 +4,19 @@ import { useWebSocket } from "./utils/websocket";
 import { conversationStore } from "./store/conversation";
 
 const ws = useWebSocket();
+let appMessageListenerReady = false;
+
+const handleAppSocketMessage = (msg: any) => {
+  conversationStore.updateConversation(msg);
+};
 
 onLaunch(() => {
   console.log("App Launch");
   ws.connect();
-  ws.on('message', (msg) => {
-    console.log('[App] WS message:', msg);
-    conversationStore.updateConversation(msg);
-  });
+  if (!appMessageListenerReady) {
+    ws.on('message', handleAppSocketMessage);
+    appMessageListenerReady = true;
+  }
 });
 
 onShow(() => {

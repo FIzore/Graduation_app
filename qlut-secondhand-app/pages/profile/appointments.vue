@@ -1,6 +1,6 @@
 ﻿<template>
   <view class="container">
-    <view class="header">
+    <view class="header" :style="{ paddingTop: navMetrics.paddingTop + 'px', paddingRight: navMetrics.paddingRight + 'px' }">
       <view class="back-box" @click="goBack">
         <uni-icons type="back" size="24" color="#333"></uni-icons>
       </view>
@@ -8,7 +8,14 @@
       <view class="placeholder"></view>
     </view>
 
-    <view class="content">
+    <scroll-view
+      class="content"
+      scroll-y
+      refresher-enabled
+      :refresher-triggered="refresherTriggered"
+      @refresherrefresh="onRefresh"
+      @refresherrestore="onRestore"
+    >
       <view v-if="list.length > 0" class="list-wrapper">
         <view
           class="appointment-card"
@@ -32,6 +39,9 @@
           </view>
 
           <view class="card-footer" v-if="app.status === 1" @click.stop="">
+            <view class="cancel-btn" @click.stop.prevent="handleCancelAppointment(app)">
+              <text>取消预约</text>
+            </view>
             <view class="confirm-btn" @click.stop.prevent="handleConfirm(app)">
               <text>确认交接</text>
             </view>
@@ -43,15 +53,18 @@
         <image src="/static/empty.png" mode="aspectFit" class="empty-img"></image>
         <text class="empty-text">暂无预约记录</text>
       </view>
-    </view>
+    </scroll-view>
   </view>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
-import { getMyAppointments, confirmAppointment } from '../../api/item';
-import { IMAGE_BASE_URL } from '../../config';
+import { getMyAppointments, confirmAppointment, cancelAppointment } from '../../api/item';
+import { getFirstImageUrl } from '../../utils/image';
+import { getCustomNavMetrics } from '../../utils/navigation';
+
+const navMetrics = getCustomNavMetrics();
 
 interface AppointmentItem {
   id: number;
@@ -71,6 +84,8 @@ interface AppointmentRecord {
 const list = ref<AppointmentRecord[]>([]);
 const loading = ref(false);
 const confirming = ref(false);
+const cancelling = ref(false);
+const refresherTriggered = ref(false);
 
 const goBack = () => {
   uni.navigateBack();
@@ -79,32 +94,6 @@ const goBack = () => {
 const goToDetail = (id: number | string | undefined) => {
   if (!id) return;
   uni.navigateTo({ url: `/pages/item/detail?id=${id}` });
-};
-
-const formatImage = (url?: string) => {
-  if (!url) return '/static/default.png';
-  if (url.startsWith('http')) return url;
-  if (url.startsWith('/uploads') || url.startsWith('/')) return `${IMAGE_BASE_URL}${url}`;
-  return `${IMAGE_BASE_URL}/${url}`;
-};
-
-const parseImages = (raw: any): string[] => {
-  if (Array.isArray(raw)) return raw.filter(Boolean);
-  if (typeof raw === 'string') {
-    const text = raw.trim();
-    if (!text) return [];
-    if (text.startsWith('[')) {
-      try {
-        const parsed = JSON.parse(text);
-        return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
-      } catch (e) {
-        console.error('解析图片数组失败:', e);
-        return [];
-      }
-    }
-    return [text];
-  }
-  return [];
 };
 
 const getItemEntity = (app: AppointmentRecord) => {
@@ -122,8 +111,7 @@ const getAppointmentId = (app: AppointmentRecord) => {
 
 const getAppointmentCover = (app: AppointmentRecord) => {
   const item = getItemEntity(app);
-  const images = parseImages(item.images);
-  return formatImage(images[0]);
+  return getFirstImageUrl(item.images);
 };
 
 const formatTime = (timeStr: string | undefined) => {
@@ -163,6 +151,8 @@ const loadAppointments = async () => {
     list.value = [];
   } finally {
     loading.value = false;
+    refresherTriggered.value = false;
+    uni.stopPullDownRefresh();
   }
 };
 
@@ -190,6 +180,40 @@ const handleConfirm = (app: AppointmentRecord) => {
   });
 };
 
+const handleCancelAppointment = (app: AppointmentRecord) => {
+  const id = getAppointmentId(app);
+  if (!id || cancelling.value) return;
+
+  uni.showModal({
+    title: '取消预约',
+    content: '确认取消这次预约交接？',
+    confirmColor: '#ff4d4f',
+    success: async (res) => {
+      if (res.confirm) {
+        cancelling.value = true;
+        try {
+          await cancelAppointment(id);
+          uni.showToast({ title: '已取消预约', icon: 'none' });
+          await loadAppointments();
+        } catch (e) {
+          console.error('取消预约失败', e);
+        } finally {
+          cancelling.value = false;
+        }
+      }
+    }
+  });
+};
+
+const onRefresh = () => {
+  refresherTriggered.value = true;
+  loadAppointments();
+};
+
+const onRestore = () => {
+  refresherTriggered.value = false;
+};
+
 onShow(() => {
   loadAppointments();
 });
@@ -197,15 +221,17 @@ onShow(() => {
 
 <style lang="scss" scoped>
 .container {
-  min-height: 100vh;
+  height: 100vh;
   background-color: #f7f8fa;
+  display: flex;
+  flex-direction: column;
 }
 
 .header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: calc(var(--status-bar-height) + 20rpx) 30rpx 20rpx;
+  padding: 20rpx 30rpx 20rpx;
   background-color: #fff;
   border-bottom: 1rpx solid #eee;
 
@@ -228,19 +254,22 @@ onShow(() => {
 }
 
 .content {
+  flex: 1;
+  min-height: 0;
   padding: 20rpx;
+  box-sizing: border-box;
 }
 
 .list-wrapper {
   display: flex;
   flex-direction: column;
-  gap: 20rpx;
 }
 
 .appointment-card {
   background-color: #fff;
   border-radius: 16rpx;
   padding: 24rpx;
+  margin-bottom: 20rpx;
   box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.04);
 
   .card-header {
@@ -287,6 +316,20 @@ onShow(() => {
       border-radius: 8rpx;
       font-size: 26rpx;
       color: #fff;
+      font-weight: bold;
+
+      &:active {
+        opacity: 0.85;
+      }
+    }
+
+    .cancel-btn {
+      padding: 12rpx 32rpx;
+      margin-right: 18rpx;
+      background-color: #f5f5f5;
+      border-radius: 8rpx;
+      font-size: 26rpx;
+      color: #666;
       font-weight: bold;
 
       &:active {

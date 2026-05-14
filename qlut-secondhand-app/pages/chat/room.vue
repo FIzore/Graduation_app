@@ -1,6 +1,6 @@
 <template>
   <view class="room-container">
-    <view class="nav-bar" :style="{ paddingTop: statusBarHeight + 'px' }">
+    <view class="nav-bar" :style="{ paddingTop: navMetrics.paddingTop + 'px', paddingRight: navMetrics.paddingRight + 'px' }">
       <view class="nav-back" @click="goBack">
         <uni-icons type="back" size="22" color="#333"></uni-icons>
       </view>
@@ -11,8 +11,12 @@
       <view class="nav-placeholder"></view>
     </view>
 
-    <view v-if="itemId" class="context-anchor" :style="{ top: navAnchorTop + 'px' }">
-      <image class="anchor-cover" :src="itemCover || '/static/default.png'" mode="aspectFill"></image>
+    <view class="ws-status" v-if="socketStatusText" :style="{ top: navMetrics.anchorTop + 'px' }">
+      <text>{{ socketStatusText }}</text>
+    </view>
+
+    <view v-if="itemId" class="context-anchor" :style="{ top: anchorTop + 'px' }">
+      <image class="anchor-cover" :src="itemCover || defaultCover" mode="aspectFill"></image>
       <view class="anchor-main">
         <text class="anchor-title">{{ itemTitle || '当前沟通物品' }}</text>
         <text class="anchor-price" v-if="itemPrice">约 {{ itemPrice }}</text>
@@ -83,6 +87,8 @@ import { onLoad, onUnload } from '@dcloudio/uni-app';
 import { useWebSocket } from '../../utils/websocket';
 import { conversationStore } from '../../store/conversation';
 import { getChatHistory } from '../../api/chat';
+import { DEFAULT_ITEM_COVER, formatImageUrl } from '../../utils/image';
+import { getCustomNavMetrics } from '../../utils/navigation';
 
 interface ChatMsg {
   id: number;
@@ -94,10 +100,9 @@ interface ChatMsg {
 }
 
 const ws = useWebSocket();
-const statusBarHeight = uni.getSystemInfoSync().statusBarHeight || 20;
+const navMetrics = getCustomNavMetrics();
 const PAGE_SIZE = 20;
-const navBarHeight = 88;
-const anchorOffset = 16;
+const defaultCover = DEFAULT_ITEM_COVER;
 
 const myId = ref(0);
 const userId = ref(0);
@@ -112,12 +117,30 @@ const inputText = ref('');
 const keyboardHeight = ref(0);
 const scrollTop = ref(0);
 const loadingHistory = ref(false);
+const socketStatusText = ref('');
 
 const historyPage = ref(1);
 const noMoreHistory = ref(false);
 let msgIdCounter = 0;
 const loadedMsgKeys: Set<string> = new Set();
-const navAnchorTop = statusBarHeight + navBarHeight;
+const anchorTop = ref(navMetrics.anchorTop);
+
+const syncSocketStatus = () => {
+  if (ws.status.connected) {
+    socketStatusText.value = ws.status.pendingCount > 0
+      ? `网络已恢复，正在发送 ${ws.status.pendingCount} 条消息`
+      : '';
+  } else if (ws.status.reconnecting) {
+    socketStatusText.value = ws.status.pendingCount > 0
+      ? `连接重试中，${ws.status.pendingCount} 条消息待发送`
+      : '连接重试中...';
+  } else if (ws.status.pendingCount > 0) {
+    socketStatusText.value = `${ws.status.pendingCount} 条消息待发送`;
+  } else {
+    socketStatusText.value = '';
+  }
+  anchorTop.value = navMetrics.anchorTop + (socketStatusText.value ? 34 : 0);
+};
 
 const scrollToBottom = () => {
   nextTick(() => {
@@ -154,6 +177,7 @@ const loadInitialHistory = async () => {
     scrollToBottom();
   } catch (e) {
     console.error('[chat] load history failed:', e);
+    uni.showToast({ title: '历史消息加载失败，请稍后重试', icon: 'none' });
   } finally {
     loadingHistory.value = false;
     uni.hideLoading();
@@ -191,6 +215,7 @@ const loadMoreHistory = async () => {
   } catch (e) {
     historyPage.value--;
     console.error('[chat] load more history failed:', e);
+    uni.showToast({ title: '更多历史加载失败', icon: 'none' });
   } finally {
     loadingHistory.value = false;
   }
@@ -286,7 +311,7 @@ onLoad(async (options: any) => {
     return;
   }
   itemTitle.value = decodeURIComponent(options.itemTitle || '');
-  itemCover.value = decodeURIComponent(options.itemCover || '');
+  itemCover.value = formatImageUrl(decodeURIComponent(options.itemCover || ''));
   itemPrice.value = decodeURIComponent(options.itemPrice || '');
   otherAvatar.value = itemCover.value || '/static/default-avatar.png';
   myId.value = conversationStore.getMyUserId();
@@ -294,10 +319,19 @@ onLoad(async (options: any) => {
 
   await loadInitialHistory();
   ws.on('message', handleSocketMsg);
+  ws.on('open', syncSocketStatus);
+  ws.on('close', syncSocketStatus);
+  ws.on('error', syncSocketStatus);
+  ws.on('status', syncSocketStatus);
+  syncSocketStatus();
 });
 
 onUnload(() => {
   ws.off('message', handleSocketMsg);
+  ws.off('open', syncSocketStatus);
+  ws.off('close', syncSocketStatus);
+  ws.off('error', syncSocketStatus);
+  ws.off('status', syncSocketStatus);
   conversationStore.markRead(userId.value, itemId.value);
 });
 </script>
@@ -353,6 +387,25 @@ onUnload(() => {
 
   .nav-placeholder {
     width: 60rpx;
+  }
+}
+
+.ws-status {
+  position: fixed;
+  left: 20rpx;
+  right: 20rpx;
+  height: 48rpx;
+  background: rgba(255, 247, 230, 0.96);
+  border: 1rpx solid rgba(250, 140, 22, 0.18);
+  border-radius: 12rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 11;
+
+  text {
+    font-size: 24rpx;
+    color: #ad6800;
   }
 }
 

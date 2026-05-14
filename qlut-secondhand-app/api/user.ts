@@ -18,7 +18,6 @@ export interface PingResponse {
  * 登录认证接口
  */
 export const login = (data: { studentId: string; password: string }) => {
-  console.log('Sending Auth Params (Login):', data);
   return request<LoginResponse>('/auth/login', 'POST', data);
 };
 
@@ -26,7 +25,6 @@ export const login = (data: { studentId: string; password: string }) => {
  * 用户注册接口
  */
 export const register = (data: { studentId: string; password: string }) => {
-  console.log('Sending Auth Params (Register):', data);
   return request('/auth/register', 'POST', data);
 };
 

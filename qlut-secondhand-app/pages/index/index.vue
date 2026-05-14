@@ -83,13 +83,12 @@
 import { ref, onMounted } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
 import { getItems, getIndexRecommend, type Item, type RecommendListResponse } from '../../api/item';
-import { IMAGE_BASE_URL } from '../../config';
 import { conversationStore } from '../../store/conversation';
+import { getFirstImageUrl } from '../../utils/image';
 import CustomTabbar from '../../components/custom-tabbar.vue';
 
 type ItemListResponse = Item[] | { items?: Item[]; total?: number };
 
-const serverUrl = IMAGE_BASE_URL;
 const items = ref<Item[]>([]);
 const page = ref(1);
 const size = ref(10);
@@ -223,11 +222,6 @@ const fetchItems = async (isRefresh = false, showCategoryLoading = false) => {
       items.value.push(...newItems);
     }
     
-    // Debug 检查数据层级
-    if (items.value.length > 0) {
-      console.log('【首页渲染数据检查】', JSON.stringify(items.value[0]));
-    }
-    
     // 根据返回长度判断是否没有更多
     if (isFallbackBaseMode.value || !isRecommendMode.value) {
       noMore.value = !newItems || newItems.length < size.value;
@@ -245,9 +239,9 @@ const fetchItems = async (isRefresh = false, showCategoryLoading = false) => {
       updateBannerText();
       emptyStateText.value = '推荐引擎正在升级中，请稍后再试';
       items.value = [
-        { id: 1, publisherId: 101, title: '九成新高数课本，笔记清晰', content: '保护得很好', price: 15.0, images: [''], status: 'OnSale' },
-        { id: 2, publisherId: 102, title: '全新未拆封蓝牙耳机', content: '未拆封', price: 80.0, images: [''], status: 'Pending' },
-        { id: 3, publisherId: 103, title: '考研政治核心考案', content: '附赠资料', price: 30.0, images: [''], status: 'OnSale' }
+        { id: 1, publisherId: 101, title: '九成新高数课本，笔记清晰', content: '保护得很好', price: 15.0, images: ['/static/empty.png'], status: 'OnSale' },
+        { id: 2, publisherId: 102, title: '全新未拆封蓝牙耳机', content: '未拆封', price: 80.0, images: ['/static/empty.png'], status: 'Pending' },
+        { id: 3, publisherId: 103, title: '考研政治核心考案', content: '附赠资料', price: 30.0, images: ['/static/empty.png'], status: 'OnSale' }
       ];
       noMore.value = true;
     }
@@ -316,35 +310,7 @@ const goToSearch = () => {
   });
 };
 
-// 解析图片地址：兼容 string[] / JSON 字符串 / 相对路径
-const getCoverImage = (imagesStr: any) => {
-  if (!imagesStr) return '/static/default.png';
-  
-  let imgList: string[] = [];
-  try {
-    if (Array.isArray(imagesStr)) {
-      imgList = imagesStr;
-    } else if (typeof imagesStr === 'string') {
-      if (imagesStr.trim().startsWith('[')) {
-        imgList = JSON.parse(imagesStr);
-      } else {
-        imgList = [imagesStr];
-      }
-    }
-  } catch (e) {
-    console.error('Image JSON parse error:', e);
-    imgList = typeof imagesStr === 'string' ? [imagesStr] : [];
-  }
-
-  if (!imgList || imgList.length === 0 || !imgList[0]) {
-    return '/static/default.png';
-  }
-  
-  const first = imgList[0].replace(/"/g, '');
-  if (first.startsWith('http')) return first;
-  if (first.startsWith('/uploads')) return `${IMAGE_BASE_URL}${first}`;
-  return `${serverUrl}${first.startsWith('/') ? '' : '/'}${first}`;
-};
+const getCoverImage = (images: unknown) => getFirstImageUrl(images);
 
 onMounted(() => {
   syncLoginState();
@@ -487,10 +453,10 @@ onShow(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 16rpx;
   box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.08);
 
   text {
+    margin-left: 16rpx;
     font-size: 26rpx;
     color: #333;
   }

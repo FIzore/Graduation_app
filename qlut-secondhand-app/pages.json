@@ -9,7 +9,7 @@
 		{
 			"path": "pages/index/index",
 			"style": {
-				"navigationBarTitleText": "齐鲁工大二手平台"
+				"navigationBarTitleText": "智循校园"
 			}
 		},
 		{
@@ -76,11 +76,18 @@
 				"navigationBarTitleText": "我的预约",
 				"navigationStyle": "custom"
 			}
+		},
+		{
+			"path": "pages/profile/wishlist",
+			"style": {
+				"navigationBarTitleText": "我想要的",
+				"navigationStyle": "custom"
+			}
 		}
 	],
 	"globalStyle": {
 		"navigationBarTextStyle": "black",
-		"navigationBarTitleText": "齐鲁工大二手平台",
+		"navigationBarTitleText": "智循校园",
 		"navigationBarBackgroundColor": "#F8F8F8",
 		"backgroundColor": "#F8F8F8"
 	},

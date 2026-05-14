@@ -20,7 +20,7 @@
         <text class="label">预约交接</text>
       </view>
       <view class="stat-item">
-        <text class="count">0</text>
+        <text class="count">{{ wishlistCount }}</text>
         <text class="label">想要的</text>
       </view>
     </view>
@@ -33,6 +33,14 @@
           clickable
           link="navigateTo"
           to="/pages/profile/published"
+          :border="false"
+        ></uni-list-item>
+        <uni-list-item
+          title="我想要的"
+          showArrow
+          clickable
+          link="navigateTo"
+          to="/pages/profile/wishlist"
           :border="false"
         ></uni-list-item>
         <uni-list-item
@@ -82,6 +90,7 @@ const isLogin = ref(false);
 const currentUserId = ref('');
 const publishedCount = ref(0);
 const appointmentCount = ref(0);
+const wishlistCount = ref(0);
 const serverRoot = BASE_URL.replace('/api/v1', '');
 const defaultAvatar = '/static/default-avatar.png';
 const fallbackAccount = ref('');
@@ -164,6 +173,15 @@ const getUserIdFromToken = (): string => {
   }
 };
 
+const syncWishlistCount = () => {
+  try {
+    const storageInfo = uni.getStorageInfoSync();
+    wishlistCount.value = storageInfo.keys.filter((key) => key.startsWith('fav_')).length;
+  } catch {
+    wishlistCount.value = 0;
+  }
+};
+
 onShow(() => {
   uni.hideTabBar();
 
@@ -195,6 +213,7 @@ onShow(() => {
   }
 
   fetchStats();
+  syncWishlistCount();
 });
 
 const fetchStats = async () => {
@@ -238,6 +257,7 @@ const handleLogout = () => {
           isLogin.value = false;
           publishedCount.value = 0;
           appointmentCount.value = 0;
+          wishlistCount.value = 0;
 
           uni.showToast({ title: '退出成功', icon: 'none' });
           setTimeout(() => {

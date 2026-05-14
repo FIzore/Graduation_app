@@ -5,7 +5,7 @@
         <image :src="img" mode="aspectFill" class="swiper-image" @click="previewImage(index)" />
       </swiper-item>
       <swiper-item v-if="!formattedImages.length">
-        <image src="/static/default.png" mode="aspectFill" class="swiper-image" />
+        <image src="/static/empty.png" mode="aspectFill" class="swiper-image" />
       </swiper-item>
     </swiper>
 
@@ -64,8 +64,8 @@
 import { ref, computed } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
 import { getItemDetail, createAppointment, reportBehaviors, type Item } from '../../api/item';
-import { IMAGE_BASE_URL } from '../../config';
 import { conversationStore } from '../../store/conversation';
+import { formatImageUrl, parseImages } from '../../utils/image';
 
 type DetailItem = Item & { nickname?: string };
 
@@ -73,32 +73,6 @@ const item = ref<DetailItem | null>(null);
 const reserving = ref(false);
 const isFavorited = ref(false);
 const favoriting = ref(false);
-const serverUrl = IMAGE_BASE_URL;
-
-const parseImages = (raw: any): string[] => {
-  if (Array.isArray(raw)) return raw.filter(Boolean);
-  if (typeof raw === 'string') {
-    const text = raw.trim();
-    if (!text) return [];
-    if (text.startsWith('[')) {
-      try {
-        const parsed = JSON.parse(text);
-        return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
-      } catch {
-        return [text];
-      }
-    }
-    return [text];
-  }
-  return [];
-};
-
-const formatImage = (url?: string) => {
-  if (!url) return '/static/default.png';
-  if (url.startsWith('http')) return url;
-  if (url.startsWith('/uploads')) return `${IMAGE_BASE_URL}${url}`;
-  return `${serverUrl}${url.startsWith('/') ? '' : '/'}${url}`;
-};
 
 const itemId = computed(() => item.value?.id || 0);
 const itemTitle = computed(() => item.value?.title || '未命名物品');
@@ -118,7 +92,7 @@ const isSelf = computed(() => {
 const formattedImages = computed(() => {
   const raw = item.value?.images;
   const images = parseImages(raw);
-  return images.map((img) => formatImage(img));
+  return images.map((img) => formatImageUrl(img));
 });
 
 const onLoadHandler = async (options: any) => {
@@ -178,7 +152,13 @@ const toggleFavorite = async () => {
     const newState = !isFavorited.value;
     isFavorited.value = newState;
     if (newState) {
-      uni.setStorageSync(`fav_${iid}`, '1');
+      uni.setStorageSync(`fav_${iid}`, JSON.stringify({
+        id: iid,
+        title: itemTitle.value,
+        price: itemPrice.value,
+        images: item.value.images || [],
+        status: itemStatus.value,
+      }));
     } else {
       uni.removeStorageSync(`fav_${iid}`);
     }
@@ -220,8 +200,15 @@ const getStatusText = (status: string) => {
 };
 
 const formatTime = (time: any) => {
-  const normalizedTime = typeof time === 'string' ? time.replace(/-/g, '/') : time;
-  const d = new Date(normalizedTime);
+  if (!time) return '未知时间';
+
+  let d = new Date(time);
+
+  // iOS 对 "YYYY-MM-DD HH:mm:ss" 兼容较差，但 ISO 8601（含 T / Z）不应做替换。
+  if (Number.isNaN(d.getTime()) && typeof time === 'string' && !time.includes('T')) {
+    d = new Date(time.replace(/-/g, '/'));
+  }
+
   if (Number.isNaN(d.getTime())) return '未知时间';
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
