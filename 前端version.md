@@ -351,3 +351,18 @@ v0.9.8.2 这轮目标里的 4 个点已经落地：
 建议 Commit Message：
 
 v1.1.1: 修复前端缺陷报告中的纯前端问题
+
+1.2.0
+管理大屏独立前端初始化：
+
+- **独立目录**：新增 `qlut-admin-dashboard/`，与 Uni-app 小程序目录解耦，避免管理端依赖污染移动端
+- **技术栈**：采用 Vue3 + Vite + TypeScript + ECharts，复刻 `web.html` 的 Ant Design 风格后台形态
+- **接口对接**：新增 `src/api/dashboard.ts`，按后端 v0.35 契约请求 `GET /admin/dashboard/stats`，请求头携带 `Authorization: Bearer <token>`
+- **数据模型**：新增 `DashboardStats`、`RiskTypeItem`、`HighRiskApiItem`、`AttackTrendLine`、`RiskLogItem` 类型，字段与后端 mock 保持 camelCase 一致
+- **Mock 降级**：新增 `src/mock/dashboard.ts`，后端不可用时自动切换演示数据，保证 ECharts 页面稳定展示
+- **页面能力**：实现管理员 Token 输入、401/403 错误提示、实时/演示数据标识、指标卡、趋势折线图、风险类型环图、接口排行柱状图和风控日志表格
+- **对接文档**：新增 `.env.example` 与 `README.md`，明确 `VITE_API_BASE_URL` 和启动方式
+
+建议 Commit Message：
+
+v1.2.0: 初始化 ECharts 管理大屏独立前端

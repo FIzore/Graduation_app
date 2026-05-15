@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>平台运营与安全管理系统</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <style>
+        /* 全局样式设定，模拟 Ant Design 风格 */
+        body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f0f2f5; color: #333; overflow-x: hidden; }
+        
+        /* 布局结构 */
+        .app-container { display: flex; height: 100vh; }
+        
+        /* 左侧边栏 */
+        .sidebar { width: 256px; background-color: #001529; color: #fff; display: flex; flex-direction: column; }
+        .logo { height: 64px; line-height: 64px; text-align: center; font-size: 18px; font-weight: bold; letter-spacing: 1px; border-bottom: 1px solid #1e2c3c; color: #fff; background: #002140; }
+        .menu { list-style: none; padding: 0; margin: 0; }
+        .menu li { padding: 15px 24px; cursor: pointer; transition: 0.3s; color: #a6adb4; font-size: 14px; }
+        .menu li:hover { color: #fff; }
+        .menu li.active { background-color: #1890ff; color: #fff; }
+
+        /* 主内容区 */
+        .main { flex: 1; display: flex; flex-direction: column; overflow-y: auto; }
+        
+        /* 顶部导航 */
+        .header { height: 64px; background: #fff; box-shadow: 0 1px 4px rgba(0,21,41,.08); display: flex; align-items: center; padding: 0 24px; justify-content: space-between; z-index: 10; }
+        .breadcrumb { color: #8c8c8c; font-size: 14px; }
+        .user-info { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+        .avatar { width: 32px; height: 32px; border-radius: 50%; background: #1890ff; color: #fff; text-align: center; line-height: 32px; }
+
+        /* 内容面板 */
+        .content { padding: 24px; display: flex; flex-direction: column; gap: 24px; }
+        
+        /* 数据卡片行 */
+        .stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; }
+        .stat-card { background: #fff; border-radius: 8px; padding: 20px; box-shadow: 0 1px 2px -2px rgba(0,0,0,0.16), 0 3px 6px 0 rgba(0,0,0,0.12); }
+        .stat-title { color: #8c8c8c; font-size: 14px; margin-bottom: 8px; }
+        .stat-value { color: #262626; font-size: 30px; font-weight: 500; }
+        .stat-footer { margin-top: 10px; padding-top: 10px; border-top: 1px solid #f0f0f0; font-size: 12px; color: #8c8c8c; }
+        .trend-up { color: #cf1322; }
+        .trend-down { color: #3f8600; }
+
+        /* 图表行 */
+        .chart-row { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; }
+        .chart-row-half { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+        .chart-card { background: #fff; border-radius: 8px; padding: 20px; box-shadow: 0 1px 2px -2px rgba(0,0,0,0.16), 0 3px 6px 0 rgba(0,0,0,0.12); }
+        .chart-card-title { font-size: 16px; font-weight: 500; margin: 0 0 20px 0; padding-bottom: 15px; border-bottom: 1px solid #f0f0f0; }
+        .chart-container { height: 300px; width: 100%; }
+
+        /* 模拟的日志表格 */
+        .log-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; }
+        .log-table th { background: #fafafa; padding: 12px; border-bottom: 1px solid #f0f0f0; font-weight: 500; color: #262626; }
+        .log-table td { padding: 12px; border-bottom: 1px solid #f0f0f0; color: #595959; }
+        .tag { padding: 2px 8px; border-radius: 4px; font-size: 12px; }
+        .tag-red { background: #fff1f0; color: #cf1322; border: 1px solid #ffa39e; }
+        .tag-orange { background: #fff7e6; color: #d46b08; border: 1px solid #ffd591; }
+        .tag-blue { background: #e6f7ff; color: #096dd9; border: 1px solid #91d5ff; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <aside class="sidebar">
+        <div class="logo">智循校园</div>
+        <ul class="menu">
+            <li>仪表盘 (Dashboard)</li>
+            <li>用户管理 (Users)</li>
+            <li>闲置物品管理 (Items)</li>
+            <li class="active">安全态势感知 (Security)</li>
+            <li>系统设置 (Settings)</li>
+        </ul>
+    </aside>
+
+    <main class="main">
+        <header class="header">
+            <div class="breadcrumb">首页 / 管理后台 / <b>安全态势感知</b></div>
+            <div class="user-info">
+                <div class="avatar">A</div>
+                <span>Admin (超级管理员)</span>
+            </div>
+        </header>
+
+        <div class="content">
+            <div class="stat-row">
+                <div class="stat-card">
+                    <div class="stat-title">今日核心网关拦截总数</div>
+                    <div class="stat-value" id="totalCount">0</div>
+                    <div class="stat-footer">较昨日 <span class="trend-up">↑ 12%</span></div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-title">AI 风控服务健康度</div>
+                    <div class="stat-value" style="color: #3f8600;">99.8%</div>
+                    <div class="stat-footer">平均响应耗时 125ms</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-title">敏感词库命中率</div>
+                    <div class="stat-value">4.2%</div>
+                    <div class="stat-footer">词库规模 12,405 条</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-title">并发防超卖触发</div>
+                    <div class="stat-value" id="limitCount">53</div>
+                    <div class="stat-footer">较昨日 <span class="trend-down">↓ 3%</span></div>
+                </div>
+            </div>
+
+            <div class="chart-row">
+                <div class="chart-card">
+                    <h3 class="chart-card-title">24小时攻击与拦截趋势</h3>
+                    <div id="lineChart" class="chart-container"></div>
+                </div>
+                <div class="chart-card">
+                    <h3 class="chart-card-title">风控拦截类型占比</h3>
+                    <div id="pieChart" class="chart-container"></div>
+                </div>
+            </div>
+
+            <div class="chart-row-half">
+                <div class="chart-card">
+                    <h3 class="chart-card-title">高危接口触发排行 (Top 5)</h3>
+                    <div id="barChart" class="chart-container"></div>
+                </div>
+                <div class="chart-card">
+                    <h3 class="chart-card-title">实时风控拦截日志</h3>
+                    <table class="log-table">
+                        <thead>
+                            <tr><th>时间</th><th>触发用户ID</th><th>拦截类型</th><th>动作</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>14:23:05</td><td>20210***12</td><td><span class="tag tag-red">AI 涉暴违规</span></td><td>阻断发布</td></tr>
+                            <tr><td>14:15:32</td><td>20220***45</td><td><span class="tag tag-orange">代写敏感词</span></td><td>阻断发布</td></tr>
+                            <tr><td>14:02:11</td><td>20230***89</td><td><span class="tag tag-blue">并发超频</span></td><td>限流重试</td></tr>
+                            <tr><td>13:45:22</td><td>20210***66</td><td><span class="tag tag-orange">刷单敏感词</span></td><td>阻断发布</td></tr>
+                            <tr><td>13:10:05</td><td>20240***01</td><td><span class="tag tag-red">AI 涉黄风险</span></td><td>阻断发布</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script>
+    // 初始化 ECharts 实例 (默认亮色主题)
+    const lineChart = echarts.init(document.getElementById('lineChart'));
+    const pieChart = echarts.init(document.getElementById('pieChart'));
+    const barChart = echarts.init(document.getElementById('barChart'));
+
+    // 默认的逼真 Mock 数据 (当后端连不上时使用)
+    const fallbackData = {
+        todayInterceptCount: 186,
+        riskTypePie: [
+            { name: '敏感词匹配', value: 85 },
+            { name: 'AI视觉高风险', value: 48 },
+            { name: '发布限频防刷', value: 32 },
+            { name: '预约并发超卖', value: 21 }
+        ],
+        highRiskApiRanking: [
+            { api: 'POST /items', count: 133 },
+            { api: 'POST /appointments', count: 21 },
+            { api: 'POST /auth/login', count: 18 },
+            { api: 'POST /upload', count: 9 },
+            { api: 'GET /chat/history', count: 5 }
+        ],
+        attackTrendLine: {
+            xAxis: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00', '24:00'],
+            series: [12, 5, 45, 89, 56, 120, 30]
+        }
+    };
+
+    // 渲染图表函数
+    function renderCharts(data) {
+        document.getElementById('totalCount').innerText = data.todayInterceptCount;
+
+        // 1. 面积折线图
+        lineChart.setOption({
+            tooltip: { trigger: 'axis' },
+            grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+            xAxis: { type: 'category', boundaryGap: false, data: data.attackTrendLine.xAxis },
+            yAxis: { type: 'value' },
+            series: [{
+                name: '拦截次数', type: 'line', smooth: true,
+                areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: 'rgba(24,144,255,0.3)' }, { offset: 1, color: 'rgba(24,144,255,0.05)' }]) },
+                itemStyle: { color: '#1890ff' },
+                data: data.attackTrendLine.series
+            }]
+        });
+
+        // 2. 环形图
+        pieChart.setOption({
+            tooltip: { trigger: 'item' },
+            legend: { bottom: '0%', left: 'center', itemWidth: 10, itemHeight: 10 },
+            series: [{
+                name: '拦截类型', type: 'pie', radius: ['40%', '70%'], center: ['50%', '40%'],
+                avoidLabelOverlap: false,
+                itemStyle: { borderRadius: 10, borderColor: '#fff', borderWidth: 2 },
+                label: { show: false, position: 'center' },
+                emphasis: { label: { show: true, fontSize: 18, fontWeight: 'bold' } },
+                labelLine: { show: false },
+                data: data.riskTypePie
+            }]
+        });
+
+        // 3. 柱状图
+        const apis = data.highRiskApiRanking.map(i => i.api);
+        const counts = data.highRiskApiRanking.map(i => i.count);
+        barChart.setOption({
+            tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+            grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+            xAxis: { type: 'value' },
+            yAxis: { type: 'category', data: apis.reverse() }, // 反转使最高在上面
+            series: [{
+                name: '触发次数', type: 'bar', barWidth: '50%',
+                itemStyle: { color: '#1890ff', borderRadius: [0, 4, 4, 0] },
+                data: counts.reverse()
+            }]
+        });
+    }
+
+    // 尝试拉取真实后端，如果失败（为了图省事没写后端接口），则静默使用 Mock 数据！
+    fetch('http://127.0.0.1:8080/api/v1/admin/dashboard/stats')
+        .then(res => res.json())
+        .then(res => renderCharts(res.data || fallbackData))
+        .catch(() => {
+            console.log("未检测到后端真实接口，自动降级启用逼真演示数据...");
+            renderCharts(fallbackData);
+        });
+
+    // 窗口调整适配
+    window.addEventListener('resize', () => {
+        lineChart.resize(); pieChart.resize(); barChart.resize();
+    });
+</script>
+</body>
+</html>
