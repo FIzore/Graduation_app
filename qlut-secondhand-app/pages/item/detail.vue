@@ -63,7 +63,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
-import { getItemDetail, createAppointment, reportBehaviors, type Item } from '../../api/item';
+import { getItemDetail, createAppointment, favoriteItem, unfavoriteItem, type Item, type ItemDetailResponse } from '../../api/item';
 import { conversationStore } from '../../store/conversation';
 import { formatImageUrl, parseImages } from '../../utils/image';
 
@@ -105,8 +105,14 @@ const onLoadHandler = async (options: any) => {
 
   try {
     const res = await getItemDetail(id);
-    item.value = res.data;
-    isFavorited.value = !!uni.getStorageSync(`fav_${id}`);
+    const raw = res.data as Item | ItemDetailResponse;
+    if ((raw as ItemDetailResponse)?.item) {
+      item.value = (raw as ItemDetailResponse).item as DetailItem;
+      isFavorited.value = Boolean((raw as ItemDetailResponse).isFavorite);
+    } else {
+      item.value = raw as DetailItem;
+      isFavorited.value = false;
+    }
   } catch (error) {
     console.error('获取详情失败:', error);
   }
@@ -152,17 +158,10 @@ const toggleFavorite = async () => {
     const newState = !isFavorited.value;
     isFavorited.value = newState;
     if (newState) {
-      uni.setStorageSync(`fav_${iid}`, JSON.stringify({
-        id: iid,
-        title: itemTitle.value,
-        price: itemPrice.value,
-        images: item.value.images || [],
-        status: itemStatus.value,
-      }));
+      await favoriteItem(iid);
     } else {
-      uni.removeStorageSync(`fav_${iid}`);
+      await unfavoriteItem(iid);
     }
-    await reportBehaviors([{ itemId: iid, behaviorType: 'favorite' }]);
   } catch (e) {
     console.error('收藏上报失败:', e);
   } finally {

@@ -18,7 +18,7 @@
           <input
             type="text"
             v-model="formData.studentId"
-            placeholder="请输入学号（10-12位）"
+            placeholder="请输入学号"
             placeholder-class="placeholder"
           />
         </view>
@@ -27,7 +27,7 @@
           <input
             :password="!showPassword"
             v-model="formData.password"
-            placeholder="请输入密码（至少6位）"
+            placeholder="请输入密码"
             placeholder-class="placeholder"
           />
           <uni-icons
@@ -45,11 +45,12 @@
 
       <view class="agreement-row" v-if="!isLogin">
         <checkbox :value="agreed" @click="agreed = !agreed" color="#007aff" style="transform:scale(0.7)"/>
-        <text class="agreement-text">同意《校园平台服务协议》</text>
+        <text class="agreement-text">同意</text>
+        <text class="agreement-link" @click="showAgreement">《校园平台服务协议》</text>
       </view>
     </view>
 
-    <view class="footer-section">
+    <view class="footer-section" v-if="showWechatEntry">
       <view class="divider">
         <view class="line"></view>
         <text class="divider-text">其他进入方式</text>
@@ -83,6 +84,7 @@ const isLogin = ref(true);
 const loading = ref(false);
 const showPassword = ref(false);
 const agreed = ref(false);
+const showWechatEntry = ref(false);
 
 const formData = reactive({
   studentId: '',
@@ -165,6 +167,15 @@ const handleWeChatAuth = () => {
     fail: () => {
       uni.showToast({ title: '微信授权失败', icon: 'none' });
     }
+  });
+};
+
+const showAgreement = () => {
+  uni.showModal({
+    title: '校园平台服务协议',
+    content: '本平台面向校园闲置物品信息撮合场景提供发布、浏览、收藏、预约和沟通服务。用户应保证发布信息真实、合法，不得发布违法违规、虚假欺诈、侵犯他人权益或与校园二手交易无关的内容。平台会对敏感词、高风险操作和异常行为进行记录与拦截。交易由买卖双方线下自行协商完成，平台不提供在线支付、物流和资金托管服务。继续注册或使用本平台，即表示你已阅读并同意遵守本协议。',
+    showCancel: false,
+    confirmText: '我知道了'
   });
 };
 
@@ -303,6 +314,11 @@ const goHome = () => {
       font-size: 24rpx;
       color: #999;
       margin-left: 10rpx;
+    }
+
+    .agreement-link {
+      font-size: 24rpx;
+      color: #007aff;
     }
   }
 }

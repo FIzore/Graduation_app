@@ -21,8 +21,8 @@
           class="item-card"
           v-for="(item, idx) in publishedItems"
           :key="idx"
-          @click="goToDetail(item.id)"
         >
+          <view class="card-main" @click="goToDetail(item.id)">
           <image class="card-img" :src="getItemCover(item)" mode="aspectFill"></image>
           <view class="card-info">
             <text class="card-title">{{ item.title }}</text>
@@ -32,6 +32,11 @@
                 {{ formatStatus(item.status) }}
               </text>
             </view>
+          </view>
+          </view>
+          <view class="card-actions">
+            <button class="edit-btn" @click.stop="goToEdit(item)">编辑</button>
+            <button class="delete-btn" @click.stop="handleDelete(item)">删除</button>
           </view>
         </view>
       </view>
@@ -47,7 +52,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
-import { getMyItems, type Item, type UserItemListResponse } from '../../api/item';
+import { deleteItem, getMyItems, type Item, type UserItemListResponse } from '../../api/item';
 import { getFirstImageUrl } from '../../utils/image';
 import { getCustomNavMetrics } from '../../utils/navigation';
 
@@ -68,6 +73,31 @@ const refresherTriggered = ref(false);
 
 const getItemCover = (item: Item) => {
   return getFirstImageUrl(item.images);
+};
+
+const goToEdit = (item: Item) => {
+  if (!item.id) return;
+  uni.setStorageSync('editingItemDraft', item);
+  uni.switchTab({ url: '/pages/item/post' });
+};
+
+const handleDelete = (item: Item) => {
+  if (!item.id) return;
+  uni.showModal({
+    title: '删除物品',
+    content: '确认删除这条发布？删除后将不再展示。',
+    confirmColor: '#ff4d4f',
+    success: async (res) => {
+      if (!res.confirm) return;
+      try {
+        await deleteItem(item.id);
+        uni.showToast({ title: '已删除', icon: 'none' });
+        await loadPublishedItems();
+      } catch (e) {
+        console.error('删除发布失败', e);
+      }
+    },
+  });
 };
 
 const formatStatus = (status: string | undefined) => {
@@ -162,12 +192,15 @@ onShow(() => {
 }
 
 .item-card {
-  display: flex;
   background-color: #fff;
   border-radius: 16rpx;
   padding: 20rpx;
   margin-bottom: 20rpx;
   box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.04);
+
+  .card-main {
+    display: flex;
+  }
 
   .card-img {
     width: 200rpx;
@@ -231,6 +264,32 @@ onShow(() => {
           color: #52c41a;
         }
       }
+    }
+  }
+
+  .card-actions {
+    margin-top: 18rpx;
+    display: flex;
+    justify-content: flex-end;
+    gap: 16rpx;
+
+    button {
+      margin: 0;
+      padding: 0 28rpx;
+      height: 56rpx;
+      line-height: 56rpx;
+      font-size: 24rpx;
+      border-radius: 8rpx;
+    }
+
+    .edit-btn {
+      background: #e6f7ff;
+      color: #1890ff;
+    }
+
+    .delete-btn {
+      background: #fff1f0;
+      color: #cf1322;
     }
   }
 }

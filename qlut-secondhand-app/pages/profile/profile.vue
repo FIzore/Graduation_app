@@ -78,7 +78,7 @@ import { computed, ref } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
 import CustomTabbar from '../../components/custom-tabbar.vue';
 import { conversationStore } from '../../store/conversation';
-import { getMyAppointments, getMyItems, type Item, type UserItemListResponse } from '../../api/item';
+import { getMyAppointments, getMyFavorites, getMyItems, type Item, type UserItemListResponse } from '../../api/item';
 import { logout } from '../../api/user';
 import { BASE_URL } from '../../utils/request';
 import { useWebSocket } from '../../utils/websocket';
@@ -143,6 +143,11 @@ const extractMyItems = (raw: Item[] | UserItemListResponse | undefined): Item[] 
   return [];
 };
 
+const isActiveAppointment = (appointment: any): boolean => {
+  const status = String(appointment?.status ?? '').toLowerCase();
+  return status === '1' || status === 'pending';
+};
+
 const decodeBase64Url = (input: string): string => {
   try {
     const base64 = input.replace(/-/g, '+').replace(/_/g, '/');
@@ -170,15 +175,6 @@ const getUserIdFromToken = (): string => {
     return String(data.user_id || data.id || data.uid || data.sub || '');
   } catch {
     return '';
-  }
-};
-
-const syncWishlistCount = () => {
-  try {
-    const storageInfo = uni.getStorageInfoSync();
-    wishlistCount.value = storageInfo.keys.filter((key) => key.startsWith('fav_')).length;
-  } catch {
-    wishlistCount.value = 0;
   }
 };
 
@@ -213,14 +209,13 @@ onShow(() => {
   }
 
   fetchStats();
-  syncWishlistCount();
 });
 
 const fetchStats = async () => {
   try {
     const appointmentsRes = await getMyAppointments().catch(() => ({ data: [] as any }));
     const appointmentList = extractList(appointmentsRes.data);
-    appointmentCount.value = appointmentList.length;
+    appointmentCount.value = appointmentList.filter(isActiveAppointment).length;
 
     if (!currentUserId.value) {
       publishedCount.value = 0;
@@ -229,6 +224,9 @@ const fetchStats = async () => {
 
     const itemsRes = await getMyItems().catch(() => ({ data: [] as Item[] }));
     publishedCount.value = extractMyItems(itemsRes.data).length;
+
+    const favoritesRes = await getMyFavorites().catch(() => ({ data: { items: [] as Item[] } }));
+    wishlistCount.value = extractMyItems(favoritesRes.data as any).length;
   } catch (err) {
     console.error('获取统计数据失败:', err);
   } finally {

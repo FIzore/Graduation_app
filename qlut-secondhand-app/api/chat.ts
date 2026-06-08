@@ -9,6 +9,20 @@ export interface ChatMessage {
   createdAt: string;
 }
 
+export interface ConversationSummary {
+  userId: number;
+  itemId: number;
+  lastMsg: string;
+  lastTime: string;
+  unreadCount: number;
+  item?: {
+    id?: number;
+    title?: string;
+    price?: number;
+    images?: unknown;
+  };
+}
+
 /**
  * 拉取与指定用户的聊天历史记录
  * @param targetId 对方用户 ID
@@ -19,4 +33,12 @@ export interface ChatMessage {
 export const getChatHistory = (targetId: number, page: number, pageSize: number = 20, itemId: number) => {
   const params: Record<string, number> = { targetId, page, pageSize, itemId };
   return request<ChatMessage[]>('/chat/history', 'GET', params);
+};
+
+export const getConversations = () => {
+  return request<{ conversations: ConversationSummary[] }>('/chat/conversations', 'GET');
+};
+
+export const markChatRead = (targetId: number, itemId: number) => {
+  return request('/chat/read', 'PUT', { targetId, itemId });
 };

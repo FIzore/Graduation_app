@@ -1,1 +1,24 @@
 .kilo/
+
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Uni-app / frontend build output
+dist/
+**/dist/
+unpackage/
+**/unpackage/
+
+# Local caches and logs
+.cache/
+.vite/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editor / OS files
+.DS_Store
+Thumbs.db

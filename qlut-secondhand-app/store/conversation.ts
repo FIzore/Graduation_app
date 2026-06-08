@@ -14,8 +14,13 @@ export interface Conversation {
 
 interface ConversationStore {
   conversations: Record<string, Conversation>;
+  activeConversationKey: string;
   unreadTotal: number;
   updateConversation(msg: any): void;
+  upsertConversation(conv: Conversation): void;
+  mergeServerConversation(conv: Conversation): void;
+  setActiveConversation(otherUserId: number, itemId: number): void;
+  clearActiveConversation(otherUserId?: number, itemId?: number): void;
   markRead(otherUserId: number, itemId: number): void;
   getMyUserId(): number;
   reset(): void;
@@ -58,8 +63,16 @@ function getConvKey(otherId: number, iid: number): string {
   return `${otherId}_${iid}`;
 }
 
+function getTimeValue(time: string): number {
+  if (!time) return 0;
+  const normalized = time.includes('T') ? time : time.replace(/-/g, '/');
+  const value = new Date(normalized).getTime();
+  return Number.isNaN(value) ? 0 : value;
+}
+
 export const conversationStore = reactive<ConversationStore>({
   conversations: {},
+  activeConversationKey: '',
 
   get unreadTotal() {
     return (Object.values(this.conversations) as Conversation[]).reduce((sum, c) => sum + c.unreadCount, 0);
@@ -80,12 +93,15 @@ export const conversationStore = reactive<ConversationStore>({
     const isIncoming = fromId !== myId;
     const key = getConvKey(otherId, iid);
     const existing = this.conversations[key];
+    const unreadIncrement = isIncoming && this.activeConversationKey !== key ? 1 : 0;
 
     if (existing) {
       existing.lastMsg = content;
       existing.lastTime = msg.createdAt ?? msg.CreatedAt ?? new Date().toISOString();
-      if (isIncoming) {
-        existing.unreadCount += 1;
+      if (unreadIncrement) {
+        existing.unreadCount += unreadIncrement;
+      } else if (isIncoming) {
+        existing.unreadCount = 0;
       }
     } else {
       this.conversations[key] = {
@@ -97,9 +113,24 @@ export const conversationStore = reactive<ConversationStore>({
         avatar: (msg.avatar as string) || '',
         lastMsg: content,
         lastTime: msg.createdAt ?? msg.CreatedAt ?? new Date().toISOString(),
-        unreadCount: isIncoming ? 1 : 0,
+        unreadCount: unreadIncrement,
       };
     }
+  },
+
+  upsertConversation(conv: Conversation) {
+    const key = getConvKey(conv.userId, conv.itemId);
+    this.conversations[key] = conv;
+  },
+
+  mergeServerConversation(conv: Conversation) {
+    const key = getConvKey(conv.userId, conv.itemId);
+    const existing = this.conversations[key];
+    const serverHasNewerMessage = getTimeValue(conv.lastTime) > getTimeValue(existing?.lastTime || '');
+    this.conversations[key] = {
+      ...conv,
+      unreadCount: existing?.unreadCount === 0 && !serverHasNewerMessage ? 0 : conv.unreadCount,
+    };
   },
 
   markRead(otherUserId: number, itemId: number) {
@@ -109,10 +140,28 @@ export const conversationStore = reactive<ConversationStore>({
     }
   },
 
+  setActiveConversation(otherUserId: number, itemId: number) {
+    if (!otherUserId || !itemId) return;
+    this.activeConversationKey = getConvKey(otherUserId, itemId);
+    this.markRead(otherUserId, itemId);
+  },
+
+  clearActiveConversation(otherUserId?: number, itemId?: number) {
+    if (!otherUserId || !itemId) {
+      this.activeConversationKey = '';
+      return;
+    }
+    const key = getConvKey(otherUserId, itemId);
+    if (this.activeConversationKey === key) {
+      this.activeConversationKey = '';
+    }
+  },
+
   reset() {
     Object.keys(this.conversations).forEach((key) => {
       delete this.conversations[key];
     });
+    this.activeConversationKey = '';
     cachedUserId = -1;
   },
 

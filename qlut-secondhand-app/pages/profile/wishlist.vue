@@ -47,19 +47,12 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
+import { getMyFavorites, type Item } from '../../api/item';
 import { getFirstImageUrl } from '../../utils/image';
 import { getCustomNavMetrics } from '../../utils/navigation';
 
-interface WishlistItem {
-  id: number;
-  title: string;
-  price: number | string;
-  images: unknown;
-  status?: string;
-}
-
 const navMetrics = getCustomNavMetrics();
-const wishlistItems = ref<WishlistItem[]>([]);
+const wishlistItems = ref<Item[]>([]);
 const refresherTriggered = ref(false);
 
 const goBack = () => {
@@ -71,46 +64,30 @@ const goToDetail = (id: number | string | undefined) => {
   uni.navigateTo({ url: `/pages/item/detail?id=${id}` });
 };
 
-const getItemCover = (item: WishlistItem) => {
+const getItemCover = (item: Item) => {
   return getFirstImageUrl(item.images);
 };
 
 const formatStatus = (status: string | undefined) => {
   const s = String(status || '').toLowerCase();
   if (s === 'onsale') return '在售';
-  if (s === 'pending') return '锁定中';
+  if (s === 'pending') return '交接中';
   if (s === 'completed') return '已交接';
   return '已收藏';
 };
 
-const loadWishlist = () => {
-  try {
-    const storageInfo = uni.getStorageInfoSync();
-    const items = storageInfo.keys
-      .filter((key) => key.startsWith('fav_'))
-      .map((key) => {
-        const id = Number(key.replace('fav_', ''));
-        const raw = uni.getStorageSync(key);
-        if (typeof raw === 'string' && raw.startsWith('{')) {
-          try {
-            const parsed = JSON.parse(raw);
-            return {
-              id: Number(parsed?.id || id),
-              title: String(parsed?.title || '已收藏物品'),
-              price: parsed?.price ?? '0.00',
-              images: parsed?.images || [],
-              status: parsed?.status,
-            };
-          } catch {
-            return { id, title: '已收藏物品', price: '0.00', images: [] };
-          }
-        }
-        return { id, title: '已收藏物品', price: '0.00', images: [] };
-      })
-      .filter((item) => item.id > 0);
+const extractItems = (raw: Item[] | { items?: Item[] } | undefined): Item[] => {
+  if (Array.isArray(raw)) return raw;
+  if (Array.isArray(raw?.items)) return raw.items;
+  return [];
+};
 
-    wishlistItems.value = items;
-  } catch {
+const loadWishlist = async () => {
+  try {
+    const res = await getMyFavorites();
+    wishlistItems.value = extractItems(res.data);
+  } catch (e) {
+    console.error('加载收藏列表失败', e);
     wishlistItems.value = [];
   } finally {
     refresherTriggered.value = false;

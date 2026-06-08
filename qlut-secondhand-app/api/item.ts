@@ -10,8 +10,29 @@ export interface Item {
   content: string;
   price: number;
   images: string[];
+  category?: string;
   status: ItemStatus;
   createdAt?: string;
+}
+
+export interface PublishAIResult {
+  enabled: boolean;
+  available: boolean;
+  suggestedCategory: string;
+  riskLevel: string;
+  confidence: number;
+  message: string;
+}
+
+export interface CreateItemResponse {
+  item: Item;
+  finalCategory: string;
+  ai: PublishAIResult;
+}
+
+export interface ItemDetailResponse {
+  item: Item;
+  isFavorite: boolean;
 }
 
 export interface BehaviorPayload {
@@ -45,6 +66,7 @@ export interface UserItemListResponse {
 export interface RecommendListResponse {
   items?: Item[];
   total?: number;
+  source?: 'personalized' | 'latest' | string;
 }
 
 /**
@@ -72,14 +94,28 @@ export const getMyItems = () => {
  * 获取单个物品详情
  */
 export const getItemDetail = (id: number) => {
-  return request<Item>(`/items/${id}`, 'GET');
+  return request<Item | ItemDetailResponse>(`/items/${id}`, 'GET');
 };
 
 /**
  * 发布闲置物品
  */
 export const createItem = (data: CreateItemPayload) => {
-  return request('/items', 'POST', data);
+  return request<CreateItemResponse>('/items', 'POST', data);
+};
+
+/**
+ * 更新自己发布的闲置物品
+ */
+export const updateItem = (id: number, data: CreateItemPayload) => {
+  return request(`/items/${id}`, 'PUT', data);
+};
+
+/**
+ * 删除自己发布的闲置物品
+ */
+export const deleteItem = (id: number) => {
+  return request(`/items/${id}`, 'DELETE');
 };
 
 /**
@@ -101,6 +137,27 @@ export const reportBehaviors = (behaviors: BehaviorPayload[]) => {
  */
 export const getMyAppointments = () => {
   return request<any[]>('/user/appointments', 'GET');
+};
+
+/**
+ * 获取服务端收藏列表
+ */
+export const getMyFavorites = () => {
+  return request<{ items: Item[] } | Item[]>('/user/favorites', 'GET');
+};
+
+/**
+ * 收藏物品
+ */
+export const favoriteItem = (itemId: number) => {
+  return request('/favorites', 'POST', { itemId });
+};
+
+/**
+ * 取消收藏物品
+ */
+export const unfavoriteItem = (itemId: number) => {
+  return request(`/favorites/${itemId}`, 'DELETE');
 };
 
 /**

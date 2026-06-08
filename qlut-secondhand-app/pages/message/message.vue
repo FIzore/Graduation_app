@@ -14,7 +14,7 @@
         <view class="avatar-box">
           <image
             class="avatar"
-            :src="conv.itemCover || conv.avatar || '/static/default-avatar.png'"
+            :src="conv.avatar || '/static/default-avatar.png'"
             mode="aspectFill"
           ></image>
           <view class="badge" v-if="conv.unreadCount > 0">
@@ -51,6 +51,8 @@
 import { computed } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
 import { conversationStore } from '../../store/conversation';
+import { getConversations } from '../../api/chat';
+import { getFirstImageUrl } from '../../utils/image';
 import { getCustomNavMetrics } from '../../utils/navigation';
 import CustomTabbar from '../../components/custom-tabbar.vue';
 
@@ -90,12 +92,37 @@ const goToChat = (conv: { userId: number; nickname: string; itemId: number; item
       + '&itemTitle=' + encodeURIComponent(conv.itemTitle || '')
       + '&itemCover=' + encodeURIComponent(conv.itemCover || '')
       + '&itemPrice=' + encodeURIComponent(String(conv.itemPrice || ''))
+      + '&avatar=' + encodeURIComponent(conv.avatar || '')
   });
 };
 
 onShow(() => {
   uni.hideTabBar();
+  syncServerConversations();
 });
+
+const syncServerConversations = async () => {
+  try {
+    const res = await getConversations();
+    const list = res.data?.conversations || [];
+    list.forEach((conv) => {
+      store.mergeServerConversation({
+        userId: conv.userId,
+        itemId: conv.itemId,
+        itemTitle: conv.item?.title || '',
+        itemCover: getFirstImageUrl(conv.item?.images || []),
+        itemPrice: conv.item?.price,
+        nickname: `用户${conv.userId}`,
+        avatar: '',
+        lastMsg: conv.lastMsg,
+        lastTime: conv.lastTime,
+        unreadCount: Number(conv.unreadCount || 0),
+      } as any);
+    });
+  } catch (e) {
+    console.error('同步会话列表失败', e);
+  }
+};
 </script>
 
 <style lang="scss" scoped>

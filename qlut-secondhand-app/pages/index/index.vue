@@ -163,6 +163,13 @@ const fetchRecommendItems = async (): Promise<Item[]> => {
   recommendLoadFailed.value = false;
   fallbackHint.value = '';
   isFallbackBaseMode.value = false;
+  if (res.data?.source === 'personalized') {
+    fallbackHint.value = '已根据你的浏览、搜索和想要记录生成推荐';
+  } else if (res.data?.source === 'latest') {
+    fallbackHint.value = isLoggedIn.value
+      ? '暂无个性化推荐，当前展示最新在售'
+      : '当前为最新上架，登录后可体验个性化推荐';
+  }
   return extractItems(res.data);
 };
 

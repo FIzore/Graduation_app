@@ -1,0 +1,12 @@
+{
+  "appid": "wx442f1fd15052902a",
+  "projectname": "qlut-secondhand-app",
+  "compileType": "miniprogram",
+  "miniprogramRoot": "",
+  "setting": {
+    "urlCheck": false,
+    "es6": true,
+    "postcss": true,
+    "minified": true
+  }
+}

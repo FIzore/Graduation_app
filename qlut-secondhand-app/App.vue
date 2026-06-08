@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onLaunch, onShow, onHide } from "@dcloudio/uni-app";
+import { onHide, onLaunch, onShow } from "@dcloudio/uni-app";
 import { useWebSocket } from "./utils/websocket";
 import { conversationStore } from "./store/conversation";
 
@@ -14,7 +14,7 @@ onLaunch(() => {
   console.log("App Launch");
   ws.connect();
   if (!appMessageListenerReady) {
-    ws.on('message', handleAppSocketMessage);
+    ws.on("message", handleAppSocketMessage);
     appMessageListenerReady = true;
   }
 });
@@ -29,13 +29,17 @@ onHide(() => {
 </script>
 
 <style>
-/* 每个页面公共css */
-body {
+page {
   background-color: #f5f5f5;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
-/* 隐藏所有页面的 scrollbar */
+/* #ifdef H5 */
+body {
+  background-color: #f5f5f5;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
 ::-webkit-scrollbar {
   display: none;
   width: 0 !important;
@@ -43,4 +47,5 @@ body {
   -webkit-appearance: none;
   background: transparent;
 }
+/* #endif */
 </style>

@@ -86,7 +86,7 @@ import { ref, nextTick } from 'vue';
 import { onLoad, onUnload } from '@dcloudio/uni-app';
 import { useWebSocket } from '../../utils/websocket';
 import { conversationStore } from '../../store/conversation';
-import { getChatHistory } from '../../api/chat';
+import { getChatHistory, markChatRead } from '../../api/chat';
 import { DEFAULT_ITEM_COVER, formatImageUrl } from '../../utils/image';
 import { getCustomNavMetrics } from '../../utils/navigation';
 
@@ -124,6 +124,14 @@ const noMoreHistory = ref(false);
 let msgIdCounter = 0;
 const loadedMsgKeys: Set<string> = new Set();
 const anchorTop = ref(navMetrics.anchorTop);
+
+const clearCurrentUnread = () => {
+  if (!userId.value || !itemId.value) return;
+  conversationStore.markRead(userId.value, itemId.value);
+  markChatRead(userId.value, itemId.value).catch((e) => {
+    console.error('[chat] mark read failed:', e);
+  });
+};
 
 const syncSocketStatus = () => {
   if (ws.status.connected) {
@@ -237,6 +245,7 @@ const handleSocketMsg = (msg: any) => {
 
   if (isFromPeer) {
     pushMessage({ fromId, toId, content, createdAt, isMine: false });
+    clearCurrentUnread();
   } else if (isFromMe) {
     pushMessage({ fromId, toId, content, createdAt, isMine: true });
   }
@@ -313,9 +322,10 @@ onLoad(async (options: any) => {
   itemTitle.value = decodeURIComponent(options.itemTitle || '');
   itemCover.value = formatImageUrl(decodeURIComponent(options.itemCover || ''));
   itemPrice.value = decodeURIComponent(options.itemPrice || '');
-  otherAvatar.value = itemCover.value || '/static/default-avatar.png';
+  otherAvatar.value = formatImageUrl(decodeURIComponent(options.avatar || '')) || '/static/default-avatar.png';
   myId.value = conversationStore.getMyUserId();
-  conversationStore.markRead(uid, itemId.value);
+  conversationStore.setActiveConversation(uid, itemId.value);
+  clearCurrentUnread();
 
   await loadInitialHistory();
   ws.on('message', handleSocketMsg);
@@ -332,7 +342,8 @@ onUnload(() => {
   ws.off('close', syncSocketStatus);
   ws.off('error', syncSocketStatus);
   ws.off('status', syncSocketStatus);
-  conversationStore.markRead(userId.value, itemId.value);
+  clearCurrentUnread();
+  conversationStore.clearActiveConversation(userId.value, itemId.value);
 });
 </script>
 
@@ -493,7 +504,8 @@ onUnload(() => {
   }
 
   &.msg-right {
-    flex-direction: row-reverse;
+    flex-direction: row;
+    justify-content: flex-end;
   }
 }
 
